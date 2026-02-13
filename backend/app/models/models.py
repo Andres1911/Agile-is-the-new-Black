@@ -1,22 +1,23 @@
 import enum
+from datetime import UTC, datetime
 
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Boolean, Enum
+from sqlalchemy import Boolean, Column, DateTime, Enum, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
-from app.db.database import Base
 
+from app.db.database import Base
 
 # ---------------------------------------------------------------------------
 # Enums (stored as String in the database via Enum(..., native_enum=False))
 # ---------------------------------------------------------------------------
 
-class ExpenseStatus(str, enum.Enum):
+
+class ExpenseStatus(enum.StrEnum):
     PENDING = "PENDING"
     FINALIZED = "FINALIZED"
     DISPUTED = "DISPUTED"
 
 
-class VoteStatus(str, enum.Enum):
+class VoteStatus(enum.StrEnum):
     PENDING = "PENDING"
     ACCEPTED = "ACCEPTED"
     REJECTED = "REJECTED"
@@ -25,6 +26,7 @@ class VoteStatus(str, enum.Enum):
 # ---------------------------------------------------------------------------
 # User
 # ---------------------------------------------------------------------------
+
 
 class User(Base):
     __tablename__ = "users"
@@ -35,7 +37,7 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     full_name = Column(String)
     is_active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
 
     # Relationships
     household_memberships = relationship("HouseholdMember", back_populates="user")
@@ -47,6 +49,7 @@ class User(Base):
 # Household
 # ---------------------------------------------------------------------------
 
+
 class Household(Base):
     __tablename__ = "households"
 
@@ -55,7 +58,7 @@ class Household(Base):
     description = Column(String)
     invite_code = Column(String, unique=True, index=True, nullable=False)
     address = Column(String)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
 
     # Relationships
     members = relationship("HouseholdMember", back_populates="household")
@@ -63,8 +66,9 @@ class Household(Base):
 
 
 # ---------------------------------------------------------------------------
-# HouseholdMember  (Association Class – replaces old M2M table)
+# HouseholdMember  (Association Class - replaces old M2M table)
 # ---------------------------------------------------------------------------
+
 
 class HouseholdMember(Base):
     __tablename__ = "household_members"
@@ -72,7 +76,7 @@ class HouseholdMember(Base):
     user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
     household_id = Column(Integer, ForeignKey("households.id"), primary_key=True)
     is_admin = Column(Boolean, default=False, nullable=False)
-    joined_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    joined_at = Column(DateTime, default=lambda: datetime.now(UTC))
     left_at = Column(DateTime, nullable=True)
 
     # Relationships
@@ -84,6 +88,7 @@ class HouseholdMember(Base):
 # Expense
 # ---------------------------------------------------------------------------
 
+
 class Expense(Base):
     __tablename__ = "expenses"
 
@@ -91,7 +96,7 @@ class Expense(Base):
     amount = Column(Float, nullable=False)
     description = Column(String, nullable=False)
     category = Column(String)
-    date = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    date = Column(DateTime, default=lambda: datetime.now(UTC))
     status = Column(
         Enum(ExpenseStatus, native_enum=False),
         default=ExpenseStatus.PENDING,
@@ -111,6 +116,7 @@ class Expense(Base):
 # ---------------------------------------------------------------------------
 # ExpenseShare
 # ---------------------------------------------------------------------------
+
 
 class ExpenseShare(Base):
     __tablename__ = "expense_shares"

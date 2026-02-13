@@ -1,9 +1,8 @@
-from pydantic import BaseModel, EmailStr
 from datetime import datetime
-from typing import Optional, List
+
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 from app.models.models import ExpenseStatus, VoteStatus
-
 
 # ── User schemas ──────────────────────────────────────────────────────────
 
@@ -11,7 +10,7 @@ from app.models.models import ExpenseStatus, VoteStatus
 class UserBase(BaseModel):
     email: EmailStr
     username: str
-    full_name: Optional[str] = None
+    full_name: str | None = None
 
 
 class UserCreate(UserBase):
@@ -19,12 +18,11 @@ class UserCreate(UserBase):
 
 
 class User(UserBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     is_active: bool
     created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 # ── HouseholdMember schemas ──────────────────────────────────────────────
@@ -40,21 +38,18 @@ class HouseholdMemberCreate(HouseholdMemberBase):
 
 
 class HouseholdMember(HouseholdMemberBase):
+    model_config = ConfigDict(from_attributes=True)
+
     user_id: int
     household_id: int
     joined_at: datetime
-    left_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
+    left_at: datetime | None = None
 
 
 class HouseholdMemberWithUser(HouseholdMember):
     """Includes the nested User object for richer responses."""
-    user: User
 
-    class Config:
-        from_attributes = True
+    user: User
 
 
 # ── Household schemas ────────────────────────────────────────────────────
@@ -62,8 +57,8 @@ class HouseholdMemberWithUser(HouseholdMember):
 
 class HouseholdBase(BaseModel):
     name: str
-    description: Optional[str] = None
-    address: Optional[str] = None
+    description: str | None = None
+    address: str | None = None
 
 
 class HouseholdCreate(HouseholdBase):
@@ -71,19 +66,15 @@ class HouseholdCreate(HouseholdBase):
 
 
 class Household(HouseholdBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     invite_code: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
-
 
 class HouseholdWithMembers(Household):
-    members: List[HouseholdMemberWithUser] = []
-
-    class Config:
-        from_attributes = True
+    members: list[HouseholdMemberWithUser] = []
 
 
 # ── ExpenseShare schemas ─────────────────────────────────────────────────
@@ -102,11 +93,10 @@ class ExpenseShareCreate(ExpenseShareBase):
 
 
 class ExpenseShare(ExpenseShareBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     expense_id: int
-
-    class Config:
-        from_attributes = True
 
 
 # ── Expense schemas ──────────────────────────────────────────────────────
@@ -115,30 +105,26 @@ class ExpenseShare(ExpenseShareBase):
 class ExpenseBase(BaseModel):
     amount: float
     description: str
-    category: Optional[str] = None
-    date: Optional[datetime] = None
+    category: str | None = None
+    date: datetime | None = None
 
 
 class ExpenseCreate(ExpenseBase):
     household_id: int
-    shares: Optional[List[ExpenseShareCreate]] = None
+    shares: list[ExpenseShareCreate] | None = None
 
 
 class Expense(ExpenseBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     status: ExpenseStatus
     creator_id: int
     household_id: int
 
-    class Config:
-        from_attributes = True
-
 
 class ExpenseWithShares(Expense):
-    shares: List[ExpenseShare] = []
-
-    class Config:
-        from_attributes = True
+    shares: list[ExpenseShare] = []
 
 
 # ── Token schemas ────────────────────────────────────────────────────────
@@ -150,4 +136,4 @@ class Token(BaseModel):
 
 
 class TokenData(BaseModel):
-    username: Optional[str] = None
+    username: str | None = None

@@ -3,8 +3,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from main import app
 from app.db.database import Base, get_db
+from main import app
 
 # Create test database
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
@@ -25,8 +25,14 @@ app.dependency_overrides[get_db] = override_get_db
 
 # ── helpers ───────────────────────────────────────────────────────────────
 
-def _register(client, email="test@example.com", username="testuser",
-              password="testpass123", full_name="Test User"):
+
+def _register(
+    client,
+    email="test@example.com",
+    username="testuser",
+    password="testpass123",
+    full_name="Test User",
+):
     return client.post(
         "/api/v1/auth/register",
         json={
@@ -52,6 +58,7 @@ def _auth_header(client, **kwargs):
 
 # ── fixtures ──────────────────────────────────────────────────────────────
 
+
 @pytest.fixture(scope="function")
 def client():
     Base.metadata.create_all(bind=engine)
@@ -60,6 +67,7 @@ def client():
 
 
 # ── general ───────────────────────────────────────────────────────────────
+
 
 def test_read_root(client):
     response = client.get("/")
@@ -74,6 +82,7 @@ def test_health_check(client):
 
 
 # ── auth: register ────────────────────────────────────────────────────────
+
 
 def test_register_user(client):
     response = _register(client)
@@ -101,6 +110,7 @@ def test_register_duplicate_username(client):
 
 # ── auth: login ───────────────────────────────────────────────────────────
 
+
 def test_login_user(client):
     _register(client)
     response = _login(client)
@@ -122,6 +132,7 @@ def test_login_unknown_user(client):
 
 
 # ── auth: me ──────────────────────────────────────────────────────────────
+
 
 def test_get_current_user(client):
     _register(client)

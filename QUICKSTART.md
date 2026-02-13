@@ -1,179 +1,147 @@
 # Quick Start Guide
 
-This guide helps you quickly set up and run the Expense Tracker application.
+Get the Expense Tracker running locally in under 5 minutes.
 
 ## Prerequisites
 
-- Python 3.8+ installed
-- Flutter SDK installed (for mobile app)
-- Git
+| Tool | Min version | Install |
+|------|-------------|---------|
+| **uv** | 0.10+ | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+| **Python** | 3.12+ | `uv python install 3.14` (or use your system Python) |
+| **Flutter** | latest | [flutter.dev/docs/get-started/install](https://flutter.dev/docs/get-started/install) |
+| **Git** | any | — |
 
-## Backend Setup (5 minutes)
+> **Why uv?** It creates the virtualenv, resolves dependencies, and writes a
+> lockfile (`uv.lock`) so every teammate gets the exact same packages. No more
+> "works on my machine."
 
-1. **Navigate to backend directory:**
-   ```bash
-   cd backend
-   ```
+---
 
-2. **Create and activate virtual environment:**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-3. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Configure environment (optional):**
-   ```bash
-   cp .env.example .env
-   # Edit .env and change SECRET_KEY and other settings
-   ```
-
-5. **Run the server:**
-   ```bash
-   python main.py
-   ```
-
-   The API will be available at:
-   - API: http://localhost:8000
-   - API Docs: http://localhost:8000/docs
-
-## Frontend Setup (5 minutes)
-
-1. **Navigate to frontend directory:**
-   ```bash
-   cd frontend
-   ```
-
-2. **Get Flutter dependencies:**
-   ```bash
-   flutter pub get
-   ```
-
-3. **Update API URL (if needed):**
-   - Open `lib/services/api_service.dart`
-   - Change `baseUrl` if your backend is not at `http://localhost:8000`
-
-4. **Run the app:**
-   ```bash
-   flutter run
-   ```
-
-   Or for specific platform:
-   ```bash
-   flutter run -d chrome    # Web
-   flutter run -d android   # Android
-   flutter run -d ios       # iOS
-   ```
-
-## Testing the Application
-
-### Test the Backend API
+## Backend Setup
 
 ```bash
 cd backend
-source venv/bin/activate
-pytest test_main.py -v
+
+# 1 — Create .venv + install ALL deps (runtime + dev) from the lockfile
+uv sync --all-extras
+
+# 2 — (optional) Configure secrets
+cp .env.example .env        # then edit .env
+
+# 3 — Run the server
+uv run python main.py
+```
+
+The API is now live:
+- **API root:** http://localhost:8000
+- **Interactive docs:** http://localhost:8000/docs
+
+### Useful commands
+
+```bash
+# Run tests
+uv run pytest -v
+
+# Lint
+uv run ruff check .
+
+# Auto-format
+uv run ruff format .
+
+# Add a new runtime dependency
+uv add <package>
+
+# Add a dev-only dependency
+uv add --optional dev <package>
+
+# Re-lock after editing pyproject.toml manually
+uv lock
+```
+
+> `uv run` automatically uses the project's `.venv` — no need to `source
+> .venv/bin/activate` (though you still can if you prefer).
+
+---
+
+## Frontend Setup
+
+```bash
+cd frontend
+
+# 1 — Install Flutter packages
+flutter pub get
+
+# 2 — Update API URL if needed
+#     Edit lib/services/api_service.dart → baseUrl
+
+# 3 — Run
+flutter run              # default device
+flutter run -d chrome    # web
+flutter run -d android   # Android emulator
+flutter run -d ios       # iOS simulator
+```
+
+---
+
+## Testing
+
+### Backend
+
+```bash
+cd backend
+uv run pytest -v
 ```
 
 ### Manual API Testing
 
 1. Open http://localhost:8000/docs
-2. Try the endpoints:
-   - Register a new user
-   - Login to get a token
-   - Use "Authorize" button to add your token
-   - Create expenses and households
+2. **Register** a new user
+3. **Login** to get a JWT token
+4. Click **Authorize** and paste the token
+5. Try the available endpoints
 
-### Test the Mobile App
-
-1. Run the Flutter app
-2. Register a new account
-3. Add expenses
-4. Create a household
-5. View your data
-
-## Quick Feature Demo
-
-1. **User Registration:**
-   - Open the app
-   - Click "Don't have an account? Register"
-   - Fill in the form and register
-
-2. **Add an Expense:**
-   - After logging in, you'll see the Expenses tab
-   - Click the + button
-   - Enter amount, description, category
-   - Click "Add"
-
-3. **Create a Household:**
-   - Go to Households tab
-   - Click the + button
-   - Enter name and description
-   - Click "Add"
-
-4. **Add Household Expense:**
-   - In Expenses tab, click + button
-   - Fill in expense details
-   - Select a household from dropdown
-   - Click "Add"
+---
 
 ## Troubleshooting
 
-### Backend Issues
-
-**Port already in use:**
+### "Port already in use"
 ```bash
-# Kill process on port 8000
 lsof -ti:8000 | xargs kill -9
 ```
 
-**Database locked:**
+### "Database locked" (SQLite)
 ```bash
-# Remove database and restart
-rm expense_tracker.db
-python main.py
+cd backend && rm -f expense_tracker.db && uv run python main.py
 ```
 
-### Frontend Issues
-
-**Dependencies issue:**
+### Dependency mismatch between teammates
 ```bash
-flutter clean
-flutter pub get
+cd backend
+uv lock          # regenerate the lockfile
+uv sync --all-extras   # reinstall everything
 ```
 
-**Cannot connect to backend:**
-- Ensure backend is running on http://localhost:8000
-- Check `lib/services/api_service.dart` has correct URL
-- For mobile emulator, use `http://10.0.2.2:8000` (Android) or your machine's IP
+### Frontend can't reach the backend
+- Make sure the backend is running on http://localhost:8000
+- Android emulator: use `http://10.0.2.2:8000` instead of `localhost`
+- iOS simulator: `localhost` usually works; otherwise use your machine's IP
+
+---
+
+## Project Tooling at a Glance
+
+| Concern | Tool | Config lives in |
+|---------|------|-----------------|
+| Dependency management | **uv** | `pyproject.toml` + `uv.lock` |
+| Linting | **ruff** | `[tool.ruff]` in `pyproject.toml` |
+| Formatting | **ruff format** | `[tool.ruff.format]` in `pyproject.toml` |
+| Testing | **pytest** | `[tool.pytest.ini_options]` in `pyproject.toml` |
+
+---
 
 ## Next Steps
 
-- Read the full README.md for detailed documentation
-- Explore the API documentation at /docs
-- Check backend/README.md for API details
-- Check frontend/README.md for Flutter app details
-- Customize the configuration in .env file
-
-## Common Tasks
-
-**Add a new expense category:**
-- Just type it when creating an expense
-
-**Share household with another user:**
-- Currently requires user ID (future: search by email)
-- Use POST /api/v1/households/{id}/members/{user_id}
-
-**Export data:**
-- Use the API to get JSON data (future: CSV export)
-
-## Support
-
-For issues or questions:
-1. Check the documentation
-2. Review the API docs at /docs
-3. Check the GitHub issues
+- Browse the full [README.md](README.md)
+- Explore API docs at `/docs`
+- Check [backend/README.md](backend/README.md) for architecture details
+- Customise settings in `.env`

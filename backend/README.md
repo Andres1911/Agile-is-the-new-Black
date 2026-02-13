@@ -11,28 +11,26 @@ FastAPI-based REST API for the expense tracker application.
 - Invite-code based household joining
 - SQLite database (easily switchable to PostgreSQL/MySQL)
 - Automatic OpenAPI documentation
+- **uv** for dependency management & lockfile
+- **ruff** for linting & formatting
 
 ## Setup
 
-1. Create virtual environment:
+> **Prerequisite:** Install [uv](https://docs.astral.sh/uv/) — `curl -LsSf https://astral.sh/uv/install.sh | sh`
+
 ```bash
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+cd backend
+
+# Create .venv and install everything (runtime + dev) from uv.lock
+uv sync --all-extras
+
+# Run the server
+uv run python main.py
 ```
 
-2. Install dependencies:
+Or with hot reload:
 ```bash
-pip install -r requirements.txt
-```
-
-3. Run the server:
-```bash
-python main.py
-```
-
-Or using uvicorn:
-```bash
-uvicorn main:app --reload
+uv run uvicorn main:app --reload
 ```
 
 ## API Documentation
@@ -43,9 +41,21 @@ Once the server is running, visit:
 
 ## Testing
 
-Run tests with pytest:
 ```bash
-pytest test_main.py -v
+uv run pytest -v
+```
+
+## Linting & Formatting
+
+```bash
+# Check for issues
+uv run ruff check .
+
+# Auto-fix what's fixable
+uv run ruff check --fix .
+
+# Format all files
+uv run ruff format .
 ```
 
 ## Project Structure
@@ -55,20 +65,22 @@ backend/
 ├── app/
 │   ├── api/              # API endpoints
 │   │   ├── auth.py       # Authentication endpoints
-│   │   ├── expenses.py   # Expense management endpoints
-│   │   └── households.py # Household management endpoints
+│   │   ├── expenses.py   # Expense management (placeholder)
+│   │   └── households.py # Household management (placeholder)
 │   ├── core/             # Core functionality
 │   │   ├── config.py     # Configuration settings
 │   │   └── security.py   # Security utilities (hashing, JWT)
 │   ├── db/               # Database configuration
 │   │   └── database.py   # SQLAlchemy setup
 │   ├── models/           # Database models
-│   │   └── models.py     # User, Household, Expense models
+│   │   └── models.py     # User, Household, Expense, ExpenseShare
 │   └── schemas/          # Pydantic schemas
 │       └── schemas.py    # Request/response schemas
 ├── main.py               # Application entry point
-├── requirements.txt      # Python dependencies
-└── test_main.py         # Unit tests
+├── pyproject.toml        # Project config, deps, ruff & pytest settings
+├── uv.lock               # Lockfile (committed — reproducible installs)
+├── requirements.txt      # Fallback pip requirements
+└── test_main.py          # Unit tests
 ```
 
 ## Environment Variables

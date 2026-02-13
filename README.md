@@ -17,12 +17,14 @@ This expense tracker allows users to:
 ## Technology Stack
 
 ### Backend
-- **Python 3.x** - Programming language
+- **Python 3.12+** - Programming language
 - **FastAPI** - Modern web framework for building APIs
-- **SQLAlchemy** - SQL toolkit and ORM
+- **SQLAlchemy 2.0** - SQL toolkit and ORM
+- **Pydantic v2** - Data validation
 - **SQLite** - Database (can be switched to PostgreSQL/MySQL)
 - **JWT** - Authentication
-- **Pydantic** - Data validation
+- **uv** - Dependency management & virtualenv
+- **ruff** - Linting & formatting
 
 ### Frontend
 - **Flutter** - Cross-platform mobile framework
@@ -50,7 +52,9 @@ This expense tracker allows users to:
 │   │   └── schemas/      # Pydantic schemas
 │   │       └── schemas.py
 │   ├── main.py           # FastAPI application entry point
-│   ├── requirements.txt  # Python dependencies
+│   ├── pyproject.toml    # Project config, deps & ruff settings
+│   ├── uv.lock           # Lockfile (pinned transitive deps)
+│   ├── requirements.txt  # Fallback pip requirements
 │   └── test_main.py      # Backend tests
 │
 └── frontend/
@@ -70,38 +74,32 @@ This expense tracker allows users to:
 
 ## Setup Instructions
 
+### Prerequisites
+
+| Tool | Min version | Install |
+|------|-------------|--------|
+| **uv** | 0.10+ | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+| **Python** | 3.12+ | `uv python install 3.14` (or use system Python) |
+| **Flutter** | latest | [flutter.dev/docs/get-started/install](https://flutter.dev/docs/get-started/install) |
+
 ### Backend Setup
 
-1. **Navigate to backend directory**
-   ```bash
-   cd backend
-   ```
+```bash
+cd backend
 
-2. **Create a virtual environment**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+# Create .venv + install all deps from the lockfile
+uv sync --all-extras
 
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+# (optional) Configure secrets
+cp .env.example .env
 
-4. **Run the server**
-   ```bash
-   python main.py
-   ```
-   
-   Or using uvicorn directly:
-   ```bash
-   uvicorn main:app --reload
-   ```
+# Run the server
+uv run python main.py
+```
 
-5. **Access the API**
-   - API: http://localhost:8000
-   - Interactive docs: http://localhost:8000/docs
-   - Alternative docs: http://localhost:8000/redoc
+- API: http://localhost:8000
+- Interactive docs: http://localhost:8000/docs
+- Alternative docs: http://localhost:8000/redoc
 
 ### Frontend Setup
 
@@ -149,7 +147,7 @@ _Endpoints will be added with invite-code join, admin roles, etc._
 ### Backend Tests
 ```bash
 cd backend
-pytest test_main.py -v
+uv run pytest -v
 ```
 
 ## Features
@@ -236,22 +234,18 @@ pytest test_main.py -v
 ## Development
 
 ### Backend Development
-- FastAPI provides automatic API documentation at `/docs`
-- Use `uvicorn main:app --reload` for hot reloading during development
-- Follow PEP 8 style guidelines for Python code
+- **Docs:** FastAPI auto-generates OpenAPI docs at `/docs`
+- **Hot reload:** `uv run uvicorn main:app --reload`
+- **Lint:** `uv run ruff check .`
+- **Format:** `uv run ruff format .`
+- **Add a dependency:** `uv add <package>` (runtime) or `uv add --optional dev <package>` (dev)
+- **Re-lock:** `uv lock` after editing `pyproject.toml` manually
+- All config (deps, ruff, pytest) lives in `backend/pyproject.toml`
 
 ### Frontend Development
 - Use `flutter run` with hot reload enabled
 - Follow Dart style guidelines
 - Test on multiple devices/emulators
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests
-5. Submit a pull request
 
 ## License
 
