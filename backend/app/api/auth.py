@@ -34,10 +34,10 @@ def get_current_user(
     user = db.query(UserModel).filter(UserModel.username == username).first()
     if user is None:
         raise credentials_exception
-    
+
     if not user.is_active:
         raise credentials_exception
-    
+
     return user
 
 
@@ -74,7 +74,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     if not user.is_active:
         raise HTTPException(status_code=400, detail="User account is inactive")
 
