@@ -1,0 +1,43 @@
+name: Continuous Integration
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  quality-and-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Install dependencies
+        working-directory: ./backend
+        run: |
+          $HOME/.local/bin/uv sync --all-extras
+
+      - name: Run Ruff Linting
+        working-directory: ./backend
+        run: |
+          $HOME/.local/bin/uv run ruff check .
+
+      - name: Run Ruff Formatting Check
+        working-directory: ./backend
+        run: |
+          $HOME/.local/bin/uv run ruff format --check .
+
+      - name: Run Pytest
+        working-directory: ./backend
+        if: success() # Only run tests if linting passes
+        run: |
+          $HOME/.local/bin/uv run pytest -v
