@@ -4,14 +4,13 @@ FastAPI-based REST API for the expense tracker application.
 
 ## Features
 
-- JWT-based authentication
-- User registration and login
-- Personal expense management (CRUD operations)
-- Household management
-- Multi-user household support
-- RESTful API design
-- Automatic API documentation
+- JWT-based authentication (register / login / me)
+- Domain model with association-class pattern (HouseholdMember)
+- Expense splitting via ExpenseShare
+- Voting logic (VoteStatus) on shares
+- Invite-code based household joining
 - SQLite database (easily switchable to PostgreSQL/MySQL)
+- Automatic OpenAPI documentation
 
 ## Setup
 
@@ -86,35 +85,30 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 ## Database Models
 
 ### User
-- id, email, username, hashed_password, full_name, created_at
+- id, username, email, password_hash, full_name, is_active, created_at
 
 ### Household
-- id, name, description, created_at, created_by
-- Many-to-many relationship with Users
+- id, name, description, invite_code (unique), address, created_at
+
+### HouseholdMember (Association Class)
+- user_id, household_id, is_admin, joined_at, left_at
 
 ### Expense
-- id, amount, description, category, date, created_at
-- Belongs to a User
-- Optionally belongs to a Household
+- id, amount, description, category, date, status (PENDING/FINALIZED/DISPUTED)
+- creator_id (FK → Users), household_id (FK → Households)
+
+### ExpenseShare
+- id, expense_id, user_id, amount_owed, paid_amount, is_paid, vote_status (PENDING/ACCEPTED/REJECTED)
 
 ## API Endpoints Summary
 
-### Authentication
+### Authentication (implemented)
 - `POST /api/v1/auth/register` - Register new user
-- `POST /api/v1/auth/login` - Login and get token
+- `POST /api/v1/auth/login` - Login and get JWT token
 - `GET /api/v1/auth/me` - Get current user info
 
-### Expenses
-- `GET /api/v1/expenses/` - List expenses
-- `POST /api/v1/expenses/` - Create expense
-- `GET /api/v1/expenses/{id}` - Get expense
-- `PUT /api/v1/expenses/{id}` - Update expense
-- `DELETE /api/v1/expenses/{id}` - Delete expense
-- `GET /api/v1/expenses/household/{household_id}` - List household expenses
+### Expenses (coming soon)
+_Will include create/read/update/delete with splitting & voting._
 
-### Households
-- `GET /api/v1/households/` - List households
-- `POST /api/v1/households/` - Create household
-- `GET /api/v1/households/{id}` - Get household
-- `POST /api/v1/households/{id}/members/{user_id}` - Add member
-- `DELETE /api/v1/households/{id}/members/{user_id}` - Remove member
+### Households (coming soon)
+_Will include CRUD, invite-code join, and admin role management._

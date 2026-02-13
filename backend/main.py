@@ -25,6 +25,8 @@ app.add_middleware(
 
 # Include routers
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["auth"])
+# Expenses & Households routers are registered but currently empty
+# — endpoints will be added as the project evolves.
 app.include_router(expenses.router, prefix=f"{settings.API_V1_STR}/expenses", tags=["expenses"])
 app.include_router(households.router, prefix=f"{settings.API_V1_STR}/households", tags=["households"])
 

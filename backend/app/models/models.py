@@ -1,60 +1,132 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Table
+import enum
+
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Boolean, Enum
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from app.db.database import Base
 
-# Association table for many-to-many relationship between users and households
-household_members = Table(
-    'household_members',
-    Base.metadata,
-    Column('user_id', Integer, ForeignKey('users.id'), primary_key=True),
-    Column('household_id', Integer, ForeignKey('households.id'), primary_key=True)
-)
 
+# ---------------------------------------------------------------------------
+# Enums (stored as String in the database via Enum(..., native_enum=False))
+# ---------------------------------------------------------------------------
+
+class ExpenseStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    FINALIZED = "FINALIZED"
+    DISPUTED = "DISPUTED"
+
+
+class VoteStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    ACCEPTED = "ACCEPTED"
+    REJECTED = "REJECTED"
+
+
+# ---------------------------------------------------------------------------
+# User
+# ---------------------------------------------------------------------------
 
 class User(Base):
     __tablename__ = "users"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    email = Column(String, unique=True, index=True, nullable=False)
-    username = Column(String, unique=True, index=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
-    full_name = Column(String)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    
-    # Relationships
-    households = relationship("Household", secondary=household_members, back_populates="members")
-    expenses = relationship("Expense", back_populates="user")
 
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True, nullable=False)
+    email = Column(String, unique=True, index=True, nullable=False)
+    password_hash = Column(String, nullable=False)
+    full_name = Column(String)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    # Relationships
+    household_memberships = relationship("HouseholdMember", back_populates="user")
+    created_expenses = relationship("Expense", back_populates="creator")
+    expense_shares = relationship("ExpenseShare", back_populates="user")
+
+
+# ---------------------------------------------------------------------------
+# Household
+# ---------------------------------------------------------------------------
 
 class Household(Base):
     __tablename__ = "households"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     description = Column(String)
+    invite_code = Column(String, unique=True, index=True, nullable=False)
+    address = Column(String)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    created_by = Column(Integer, ForeignKey('users.id'))
-    
+
     # Relationships
-    members = relationship("User", secondary=household_members, back_populates="households")
+    members = relationship("HouseholdMember", back_populates="household")
     expenses = relationship("Expense", back_populates="household")
 
 
+# ---------------------------------------------------------------------------
+# HouseholdMember  (Association Class – replaces old M2M table)
+# ---------------------------------------------------------------------------
+
+class HouseholdMember(Base):
+    __tablename__ = "household_members"
+
+    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    household_id = Column(Integer, ForeignKey("households.id"), primary_key=True)
+    is_admin = Column(Boolean, default=False, nullable=False)
+    joined_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    left_at = Column(DateTime, nullable=True)
+
+    # Relationships
+    user = relationship("User", back_populates="household_memberships")
+    household = relationship("Household", back_populates="members")
+
+
+# ---------------------------------------------------------------------------
+# Expense
+# ---------------------------------------------------------------------------
+
 class Expense(Base):
     __tablename__ = "expenses"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     amount = Column(Float, nullable=False)
     description = Column(String, nullable=False)
     category = Column(String)
     date = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    
+    status = Column(
+        Enum(ExpenseStatus, native_enum=False),
+        default=ExpenseStatus.PENDING,
+        nullable=False,
+    )
+
     # Foreign keys
-    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    household_id = Column(Integer, ForeignKey('households.id'))
-    
+    creator_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    household_id = Column(Integer, ForeignKey("households.id"), nullable=False)
+
     # Relationships
-    user = relationship("User", back_populates="expenses")
+    creator = relationship("User", back_populates="created_expenses")
     household = relationship("Household", back_populates="expenses")
+    shares = relationship("ExpenseShare", back_populates="expense")
+
+
+# ---------------------------------------------------------------------------
+# ExpenseShare
+# ---------------------------------------------------------------------------
+
+class ExpenseShare(Base):
+    __tablename__ = "expense_shares"
+
+    id = Column(Integer, primary_key=True, index=True)
+    expense_id = Column(Integer, ForeignKey("expenses.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    amount_owed = Column(Float, nullable=False, default=0.0)
+    paid_amount = Column(Float, nullable=False, default=0.0)
+    is_paid = Column(Boolean, default=False, nullable=False)
+    vote_status = Column(
+        Enum(VoteStatus, native_enum=False),
+        default=VoteStatus.PENDING,
+        nullable=False,
+    )
+
+    # Relationships
+    expense = relationship("Expense", back_populates="shares")
+    user = relationship("User", back_populates="expense_shares")

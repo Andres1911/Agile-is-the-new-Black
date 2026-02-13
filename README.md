@@ -5,11 +5,14 @@ ECSE 428 - A household expense tracking application built with FastAPI (Python) 
 ## Overview
 
 This expense tracker allows users to:
-- Track personal expenses
-- Create and manage households
-- Share expenses within households
+- Register and authenticate (JWT)
+- Create and manage households (with invite codes)
+- Track shared expenses with splits & voting
 - Categorize expenses
 - View expense history
+
+> **Status:** The domain model (SQLAlchemy models + Pydantic schemas) is fully implemented.
+> Only the **Auth API** is wired up so far — Household, Expense and ExpenseShare endpoints will be added incrementally.
 
 ## Technology Stack
 
@@ -130,25 +133,16 @@ This expense tracker allows users to:
 
 ## API Endpoints
 
-### Authentication
+### Authentication (implemented)
 - `POST /api/v1/auth/register` - Register new user
-- `POST /api/v1/auth/login` - Login user
+- `POST /api/v1/auth/login` - Login user (returns JWT)
 - `GET /api/v1/auth/me` - Get current user
 
-### Expenses
-- `POST /api/v1/expenses/` - Create expense
-- `GET /api/v1/expenses/` - List user's expenses
-- `GET /api/v1/expenses/{id}` - Get expense details
-- `PUT /api/v1/expenses/{id}` - Update expense
-- `DELETE /api/v1/expenses/{id}` - Delete expense
-- `GET /api/v1/expenses/household/{household_id}` - List household expenses
+### Expenses (coming soon)
+_Endpoints will be added with splitting, voting & status logic._
 
-### Households
-- `POST /api/v1/households/` - Create household
-- `GET /api/v1/households/` - List user's households
-- `GET /api/v1/households/{id}` - Get household details
-- `POST /api/v1/households/{id}/members/{user_id}` - Add member
-- `DELETE /api/v1/households/{id}/members/{user_id}` - Remove member
+### Households (coming soon)
+_Endpoints will be added with invite-code join, admin roles, etc._
 
 ## Running Tests
 
@@ -160,16 +154,22 @@ pytest test_main.py -v
 
 ## Features
 
-### Current Features
-- User registration and authentication
-- Personal expense tracking
-- Household creation and management
-- Multi-user household support
-- Expense categorization
-- CRUD operations for expenses and households
+### Implemented
+- User registration and JWT authentication
+- Domain model with full association-class pattern
+  - `User`, `Household`, `HouseholdMember` (admin flag, join/leave timestamps)
+  - `Expense` with `ExpenseStatus` (PENDING / FINALIZED / DISPUTED)
+  - `ExpenseShare` with `VoteStatus` (PENDING / ACCEPTED / REJECTED) + `is_paid`
+- Unique invite codes on Households
+- Pydantic v2 schemas for all models
+
+### Coming Next
+- Household CRUD with invite-code join flow
+- Expense CRUD with automatic share splitting
+- Voting / agreement workflow on shares
+- Settlement tracking (mark shares as paid)
 
 ### Future Enhancements
-- Expense splitting between household members
 - Budget tracking and alerts
 - Expense analytics and reports
 - Export data to CSV/PDF
@@ -180,34 +180,58 @@ pytest test_main.py -v
 
 ## Database Schema
 
-### Users Table
-- id (Primary Key)
-- email (Unique)
-- username (Unique)
-- hashed_password
-- full_name
-- created_at
+### Users
+| Column | Type | Notes |
+|---|---|---|
+| id | Integer | PK |
+| username | String | Unique |
+| email | String | Unique |
+| password_hash | String | bcrypt |
+| full_name | String | |
+| is_active | Boolean | default True |
+| created_at | DateTime | UTC |
 
-### Households Table
-- id (Primary Key)
-- name
-- description
-- created_at
-- created_by (Foreign Key to Users)
+### Households
+| Column | Type | Notes |
+|---|---|---|
+| id | Integer | PK |
+| name | String | |
+| description | String | |
+| invite_code | String | Unique |
+| address | String | |
+| created_at | DateTime | UTC |
 
-### Expenses Table
-- id (Primary Key)
-- amount
-- description
-- category
-- date
-- created_at
-- user_id (Foreign Key to Users)
-- household_id (Foreign Key to Households, Optional)
+### HouseholdMembers (Association Class)
+| Column | Type | Notes |
+|---|---|---|
+| user_id | Integer | PK, FK → Users |
+| household_id | Integer | PK, FK → Households |
+| is_admin | Boolean | default False |
+| joined_at | DateTime | UTC |
+| left_at | DateTime | nullable |
 
-### Household Members (Association Table)
-- user_id (Foreign Key to Users)
-- household_id (Foreign Key to Households)
+### Expenses
+| Column | Type | Notes |
+|---|---|---|
+| id | Integer | PK |
+| amount | Float | |
+| description | String | |
+| category | String | |
+| date | DateTime | UTC |
+| status | ExpenseStatus | PENDING / FINALIZED / DISPUTED |
+| creator_id | Integer | FK → Users |
+| household_id | Integer | FK → Households |
+
+### ExpenseShares
+| Column | Type | Notes |
+|---|---|---|
+| id | Integer | PK |
+| expense_id | Integer | FK → Expenses |
+| user_id | Integer | FK → Users |
+| amount_owed | Float | |
+| paid_amount | Float | |
+| is_paid | Boolean | Settlement flag |
+| vote_status | VoteStatus | PENDING / ACCEPTED / REJECTED |
 
 ## Development
 

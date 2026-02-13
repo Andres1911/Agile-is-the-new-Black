@@ -12,34 +12,22 @@ Successfully implemented a complete household expense tracker application using 
 - **API Design**: RESTful with automatic OpenAPI documentation
 
 #### Key Features
-- User registration and authentication
-- Personal expense tracking (CRUD operations)
-- Household creation and management
-- Multi-user household support
-- Member management for households
-- Expense categorization
-- Household-level expense tracking
+- User registration and JWT authentication
+- Domain model with full association-class pattern
+- Expense splitting via ExpenseShare model
+- Voting logic (VoteStatus enum) on expense shares
+- Invite-code based household joining
+- ExpenseStatus workflow (PENDING → FINALIZED / DISPUTED)
 
-#### API Endpoints (20 routes)
+#### API Endpoints (Auth only — 3 active routes)
 **Authentication:**
 - `POST /api/v1/auth/register` - Register new user
 - `POST /api/v1/auth/login` - Login and get JWT token
 - `GET /api/v1/auth/me` - Get current user info
 
-**Expenses:**
-- `GET /api/v1/expenses/` - List user's expenses
-- `POST /api/v1/expenses/` - Create new expense
-- `GET /api/v1/expenses/{id}` - Get expense details
-- `PUT /api/v1/expenses/{id}` - Update expense
-- `DELETE /api/v1/expenses/{id}` - Delete expense
-- `GET /api/v1/expenses/household/{id}` - List household expenses
+**Expenses:** _(placeholder — to be implemented)_
 
-**Households:**
-- `GET /api/v1/households/` - List user's households
-- `POST /api/v1/households/` - Create household
-- `GET /api/v1/households/{id}` - Get household details
-- `POST /api/v1/households/{id}/members/{user_id}` - Add member
-- `DELETE /api/v1/households/{id}/members/{user_id}` - Remove member
+**Households:** _(placeholder — to be implemented)_
 
 ### Frontend (Flutter)
 - **Framework**: Flutter with Material Design
@@ -68,22 +56,25 @@ Successfully implemented a complete household expense tracker application using 
 ### Database Schema
 
 **Users Table:**
-- id (PK), email (unique), username (unique), hashed_password, full_name, created_at
+- id (PK), email (unique), username (unique), password_hash, full_name, is_active, created_at
 
 **Households Table:**
-- id (PK), name, description, created_at, created_by (FK to Users)
+- id (PK), name, description, invite_code (unique), address, created_at
+
+**HouseholdMembers Table (Association Class):**
+- user_id (PK, FK), household_id (PK, FK), is_admin, joined_at, left_at
 
 **Expenses Table:**
-- id (PK), amount, description, category, date, created_at
-- user_id (FK to Users), household_id (FK to Households, optional)
+- id (PK), amount, description, category, date, status (ExpenseStatus enum)
+- creator_id (FK to Users), household_id (FK to Households)
 
-**Household_Members Table:**
-- user_id (FK), household_id (FK) - Many-to-many relationship
+**ExpenseShares Table:**
+- id (PK), expense_id (FK), user_id (FK), amount_owed, paid_amount, is_paid, vote_status (VoteStatus enum)
 
 ## Testing
 
 ### Backend Tests
-- **Test Coverage**: 6 comprehensive tests
+- **Test Coverage**: 10 comprehensive tests
 - **Test Results**: ✅ All passing
 - **Test Framework**: pytest with FastAPI TestClient
 
@@ -91,9 +82,13 @@ Successfully implemented a complete household expense tracker application using 
 1. ✅ API root endpoint
 2. ✅ Health check endpoint
 3. ✅ User registration
-4. ✅ User login
-5. ✅ Expense creation
-6. ✅ Household creation
+4. ✅ Duplicate email registration rejected
+5. ✅ Duplicate username registration rejected
+6. ✅ User login
+7. ✅ Login with wrong password rejected
+8. ✅ Login with unknown user rejected
+9. ✅ Get current user (authenticated)
+10. ✅ Unauthenticated /me rejected
 
 ### Security Analysis
 - **CodeQL Scan**: ✅ 0 alerts
@@ -158,10 +153,9 @@ Successfully implemented a complete household expense tracker application using 
 ## Statistics
 - **Total Files**: 40+ files
 - **Source Files**: 23 Python/Dart files
-- **API Routes**: 20 endpoints
-- **Database Models**: 3 main models + 1 association table
-- **UI Screens**: 3 main screens
-- **Tests**: 6 passing tests
+- **API Routes**: 3 active (auth), more coming
+- **Database Models**: 5 models (User, Household, HouseholdMember, Expense, ExpenseShare) + 2 enums
+- **Tests**: 10 passing tests
 - **Lines of Code**: ~3,500+ lines
 
 ## Dependencies
@@ -198,8 +192,11 @@ Successfully implemented a complete household expense tracker application using 
 - Alternative docs: http://localhost:8000/redoc
 
 ## Future Enhancements
-Suggested features for future development:
-- Expense splitting between household members
+Planned for upcoming sprints:
+- Household CRUD with invite-code join flow
+- Expense CRUD with automatic share splitting
+- Voting / agreement workflow on shares
+- Settlement tracking (mark shares as paid)
 - Budget tracking and alerts
 - Analytics and charts
 - Receipt photo uploads
@@ -207,7 +204,6 @@ Suggested features for future development:
 - Export to CSV/PDF
 - Push notifications
 - Search and filter
-- Email-based member invites
 - Expense reports
 
 ## Success Metrics
