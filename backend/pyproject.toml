@@ -20,6 +20,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.3,<9.0",
+    "pytest-bdd>=8.1,<9.0",
     "httpx>=0.28,<1.0",
     "pytest-asyncio>=0.24,<1.0",
     "ruff>=0.9,<1.0",
@@ -47,6 +48,7 @@ select = [
 ignore = [
     "E501",   # line-too-long (handled by formatter)
     "B008",   # do not perform function call in argument defaults (Depends() pattern)
+    "RUF002", # ambiguous unicode characters in docstrings (EN DASH etc.)
 ]
 
 [tool.ruff.lint.isort]
@@ -59,6 +61,6 @@ indent-style = "space"
 # ── Pytest ────────────────────────────────────────────────────────────────
 
 [tool.pytest.ini_options]
-testpaths = ["."]
+testpaths = ["tests"]
 python_files = ["test_*.py"]
 asyncio_mode = "auto"
