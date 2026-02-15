@@ -80,7 +80,6 @@ def when_register_requested(client, username, email, password, context):
     )
     context["response"] = resp
     context["password"] = password  # Store password for later verification
-    context["username"] = username  # Store username for later verification
     return context
 
 
