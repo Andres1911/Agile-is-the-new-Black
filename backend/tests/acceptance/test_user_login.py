@@ -134,7 +134,7 @@ def when_login_with_wrong_password(client, username, wrong_password, context):
 def then_success_message(context, message):
     resp = context["response"]
     assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
-    # A successful login returns a token – that is our "Success" signal
+    # A successful login returns a token - that is our "Success" signal
     assert "access_token" in resp.json()
 
 

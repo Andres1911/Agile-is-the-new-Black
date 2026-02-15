@@ -3,7 +3,6 @@
 import pytest
 from pytest_bdd import given, parsers, scenarios, then, when
 
-from tests.conftest import login
 from tests.conftest import register as _register_helper
 
 # ---------------------------------------------------------------------------

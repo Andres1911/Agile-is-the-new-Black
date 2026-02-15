@@ -6,7 +6,7 @@ and internal implementation details that acceptance tests don't reach.
 """
 
 from app.core.security import create_access_token
-from tests.conftest import auth_header, login, register
+from tests.conftest import login, register
 
 # ── login: edge cases ─────────────────────────────────────────────────────
 

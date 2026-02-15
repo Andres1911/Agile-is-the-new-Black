@@ -48,6 +48,7 @@ select = [
 ignore = [
     "E501",   # line-too-long (handled by formatter)
     "B008",   # do not perform function call in argument defaults (Depends() pattern)
+    "RUF002", # ambiguous unicode characters in docstrings (EN DASH etc.)
 ]
 
 [tool.ruff.lint.isort]
