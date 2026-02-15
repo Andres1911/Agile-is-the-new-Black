@@ -40,7 +40,7 @@ Feature: Add new user
     And the system has no user with username "<InputUserName>"
     When the password "<Password>" is valid (at least 8 characters)
     And a registration is requested with username "<InputUserName>" and email "<InputEmail>" and password "<Password>"
-    Then the account with email "<InputUserName>" should not be created
+    Then the account with email "<InputEmail>" should not be created
     And the error message "Email Address Already in Use" is returned
 
     Examples:
