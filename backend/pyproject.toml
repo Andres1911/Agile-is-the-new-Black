@@ -59,6 +59,6 @@ indent-style = "space"
 # ── Pytest ────────────────────────────────────────────────────────────────
 
 [tool.pytest.ini_options]
-testpaths = ["."]
+testpaths = ["tests"]
 python_files = ["test_*.py"]
 asyncio_mode = "auto"
