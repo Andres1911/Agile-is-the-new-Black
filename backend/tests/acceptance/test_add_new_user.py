@@ -3,7 +3,8 @@
 import pytest
 from pytest_bdd import given, parsers, scenarios, then, when
 
-from tests.conftest import login, register as _register_helper
+from tests.conftest import login
+from tests.conftest import register as _register_helper
 
 # ---------------------------------------------------------------------------
 scenarios("features/ID001_Add_New_User.feature")

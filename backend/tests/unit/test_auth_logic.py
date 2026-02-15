@@ -8,7 +8,6 @@ and internal implementation details that acceptance tests don't reach.
 from app.core.security import create_access_token
 from tests.conftest import auth_header, login, register
 
-
 # ── login: edge cases ─────────────────────────────────────────────────────
 
 
@@ -16,6 +15,7 @@ class TestLoginEdgeCases:
     def test_token_contains_correct_subject(self, client):
         register(client)
         from jose import jwt
+
         from app.core.config import settings
 
         token = login(client).json()["access_token"]
@@ -25,8 +25,8 @@ class TestLoginEdgeCases:
     def test_inactive_user_rejected(self, client):
         """An inactive user should be rejected even with correct credentials."""
         register(client)
-        from tests.conftest import TestingSessionLocal
         from app.models.models import User as UserModel
+        from tests.conftest import TestingSessionLocal
 
         db = TestingSessionLocal()
         user = db.query(UserModel).filter(UserModel.username == "testuser").first()
