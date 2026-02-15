@@ -43,14 +43,20 @@ def get_current_user(
 
 @router.post("/register", response_model=User)
 def register(user_in: UserCreate, db: Session = Depends(get_db)):
-    # Check if user already exists
-    user = db.query(UserModel).filter(UserModel.email == user_in.email).first()
-    if user:
-        raise HTTPException(status_code=400, detail="Email already registered")
+    errors: list[str] = []
 
-    user = db.query(UserModel).filter(UserModel.username == user_in.username).first()
-    if user:
-        raise HTTPException(status_code=400, detail="Username already taken")
+    # Check uniqueness
+    if db.query(UserModel).filter(UserModel.email == user_in.email).first():
+        errors.append("Email Address Already in Use")
+    if db.query(UserModel).filter(UserModel.username == user_in.username).first():
+        errors.append("Username Already in Use")
+
+    # Validate password strength
+    if len(user_in.password) < 8:
+        errors.append("Password Invalid")
+
+    if errors:
+        raise HTTPException(status_code=400, detail=", ".join(errors))
 
     # Create new user
     db_user = UserModel(
@@ -67,7 +73,13 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = db.query(UserModel).filter(UserModel.username == form_data.username).first()
+    # Allow login with either email or username (OAuth2 form uses the "username" field)
+    identifier = form_data.username
+    if "@" in identifier:
+        user = db.query(UserModel).filter(UserModel.email == identifier).first()
+    else:
+        user = db.query(UserModel).filter(UserModel.username == identifier).first()
+
     if not user or not verify_password(form_data.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
