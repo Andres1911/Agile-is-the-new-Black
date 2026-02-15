@@ -79,6 +79,8 @@ def when_register_requested(client, username, email, password, context):
         client, email=email, username=username, password=password, full_name=username
     )
     context["response"] = resp
+    context["password"] = password  # Store password for later verification
+    context["username"] = username  # Store username for later verification
     return context
 
 
@@ -107,12 +109,19 @@ def then_success_message(context, message):
 
 @then(parsers.parse('a user record for "{username}" should exist'))
 def then_user_record_exists(client, context, username):
-    """Verify the user can actually log in (proving the record was persisted)."""
-    # We need the password from the registration request.  Re-login to confirm.
-    # The response already proved creation; also confirm via /me.
-    pass  # Covered by the status-200 + response body checks above.
-    # Optionally we can query /me, but we'd need the password again.
-    # The successful 200 from register with correct fields is sufficient proof.
+    """Verify the user can actually log in (proving the record was persisted and password was hashed correctly)."""
+    # Retrieve the password that was stored during registration
+    password = context.get("password")
+    if password:
+        # Verify the user can log in with the password they registered with
+        login_resp = login(client, username=username, password=password)
+        assert login_resp.status_code == 200, (
+            f"User {username} was created but cannot log in with the registered password. "
+            f"Status: {login_resp.status_code}, Response: {login_resp.text}"
+        )
+        # Verify the login response contains an access token
+        login_data = login_resp.json()
+        assert "access_token" in login_data, "Login successful but no access token returned"
 
 
 @then(parsers.parse('the account with email "{identifier}" should not be created'))
