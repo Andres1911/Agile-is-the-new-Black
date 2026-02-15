@@ -3,6 +3,7 @@
 import pytest
 from pytest_bdd import given, parsers, scenarios, then, when
 
+from tests.conftest import login
 from tests.conftest import register as _register_helper
 
 # ---------------------------------------------------------------------------
@@ -111,7 +112,7 @@ def then_user_record_exists(client, context, username):
     # Retrieve the password that was stored during registration
     password = context.get("password")
     assert password, "Password must be stored in context during registration step"
-    
+
     # Verify the user can log in with the password they registered with
     login_resp = login(client, username=username, password=password)
     assert login_resp.status_code == 200, (
