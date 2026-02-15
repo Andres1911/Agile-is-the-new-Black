@@ -34,7 +34,9 @@ def given_no_user_with_username(client, username):
 )
 def given_user_with_username_exists(client, username, context):
     email = f"{username.lower()}_seed@test.com"
-    resp = _register_helper(client, email=email, username=username, password="SeedPass1!", full_name=username)
+    resp = _register_helper(
+        client, email=email, username=username, password="SeedPass1!", full_name=username
+    )
     assert resp.status_code == 200, f"Seed user creation failed: {resp.text}"
     return context
 
@@ -45,7 +47,9 @@ def given_user_with_username_exists(client, username, context):
 )
 def given_user_with_email_exists(client, email, context):
     username = f"{email.split('@')[0]}_seed"
-    resp = _register_helper(client, email=email, username=username, password="SeedPass1!", full_name=username)
+    resp = _register_helper(
+        client, email=email, username=username, password="SeedPass1!", full_name=username
+    )
     assert resp.status_code == 200, f"Seed user creation failed: {resp.text}"
     return context
 
@@ -64,11 +68,15 @@ def when_password_invalid(password):
 
 
 @when(
-    parsers.parse('a registration is requested with username "{username}" and email "{email}" and password "{password}"'),
+    parsers.parse(
+        'a registration is requested with username "{username}" and email "{email}" and password "{password}"'
+    ),
     target_fixture="context",
 )
 def when_register_requested(client, username, email, password, context):
-    resp = _register_helper(client, email=email, username=username, password=password, full_name=username)
+    resp = _register_helper(
+        client, email=email, username=username, password=password, full_name=username
+    )
     context["response"] = resp
     return context
 
@@ -77,7 +85,9 @@ def when_register_requested(client, username, email, password, context):
 
 
 @then(
-    parsers.parse('the account with email "{email}" and username "{username}" and password "{password}" is successfully created'),
+    parsers.parse(
+        'the account with email "{email}" and username "{username}" and password "{password}" is successfully created'
+    ),
 )
 def then_account_created(context, email, username, password):
     resp = context["response"]

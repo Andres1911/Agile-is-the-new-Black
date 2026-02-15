@@ -20,6 +20,7 @@ scenarios("features/ID002_User_Login.feature")
 # Shared context passed between steps via a dict fixture
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture()
 def context():
     """Mutable dict shared across Given / When / Then in one scenario."""
@@ -30,25 +31,33 @@ def context():
 
 
 @given(
-    parsers.parse('a user with email "{email}" and password "{password}" already exists in the system'),
+    parsers.parse(
+        'a user with email "{email}" and password "{password}" already exists in the system'
+    ),
     target_fixture="context",
 )
 def given_user_with_email(client, email, password, context):
     """Register a user identified by email (username derived from email local part)."""
     username = email.split("@")[0]
-    resp = _register_helper(client, email=email, username=username, password=password, full_name=username.title())
+    resp = _register_helper(
+        client, email=email, username=username, password=password, full_name=username.title()
+    )
     assert resp.status_code == 200, f"Seed user creation failed: {resp.text}"
     context["seeded_password"] = password
     return context
 
 
 @given(
-    parsers.parse('a user with username "{username}" and password "{password}" already exists in the system'),
+    parsers.parse(
+        'a user with username "{username}" and password "{password}" already exists in the system'
+    ),
     target_fixture="context",
 )
 def given_user_with_username_and_password(client, username, password, context):
     email = f"{username.lower()}@test.com"
-    resp = _register_helper(client, email=email, username=username, password=password, full_name=username)
+    resp = _register_helper(
+        client, email=email, username=username, password=password, full_name=username
+    )
     assert resp.status_code == 200, f"Seed user creation failed: {resp.text}"
     context["seeded_password"] = password
     return context
@@ -62,7 +71,9 @@ def given_user_with_username_only(client, username, context):
     """Register a user with a default password (used in wrong‐password scenarios)."""
     email = f"{username.lower()}@test.com"
     default_password = "DefaultPass1!"
-    resp = _register_helper(client, email=email, username=username, password=default_password, full_name=username)
+    resp = _register_helper(
+        client, email=email, username=username, password=default_password, full_name=username
+    )
     assert resp.status_code == 200, f"Seed user creation failed: {resp.text}"
     context["seeded_password"] = default_password
     return context
@@ -91,7 +102,9 @@ def when_login_with_email(client, email, password, context):
 
 
 @when(
-    parsers.parse('the user attempts to log in with username "{username}" and password "{password}"'),
+    parsers.parse(
+        'the user attempts to log in with username "{username}" and password "{password}"'
+    ),
     target_fixture="context",
 )
 def when_login_with_username(client, username, password, context):
@@ -101,11 +114,15 @@ def when_login_with_username(client, username, password, context):
 
 
 @when(
-    parsers.parse('the user attempts to log in with username "{username}" and an incorrect password "{wrong_password}"'),
+    parsers.parse(
+        'the user attempts to log in with username "{username}" and an incorrect password "{wrong_password}"'
+    ),
     target_fixture="context",
 )
 def when_login_with_wrong_password(client, username, wrong_password, context):
-    resp = client.post("/api/v1/auth/login", data={"username": username, "password": wrong_password})
+    resp = client.post(
+        "/api/v1/auth/login", data={"username": username, "password": wrong_password}
+    )
     context["response"] = resp
     return context
 
@@ -127,7 +144,9 @@ def then_error_message(context, error_msg):
     assert resp.status_code == 401, f"Expected 401, got {resp.status_code}: {resp.text}"
     # The API returns "Incorrect username or password"; we accept the
     # Gherkin wording as equivalent (both communicate auth failure).
-    assert "incorrect" in resp.json()["detail"].lower() or "invalid" in resp.json()["detail"].lower()
+    assert (
+        "incorrect" in resp.json()["detail"].lower() or "invalid" in resp.json()["detail"].lower()
+    )
 
 
 @then("a session will be created")
