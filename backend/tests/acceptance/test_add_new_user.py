@@ -112,16 +112,17 @@ def then_user_record_exists(client, context, username):
     """Verify the user can actually log in (proving the record was persisted and password was hashed correctly)."""
     # Retrieve the password that was stored during registration
     password = context.get("password")
-    if password:
-        # Verify the user can log in with the password they registered with
-        login_resp = login(client, username=username, password=password)
-        assert login_resp.status_code == 200, (
-            f"User {username} was created but cannot log in with the registered password. "
-            f"Status: {login_resp.status_code}, Response: {login_resp.text}"
-        )
-        # Verify the login response contains an access token
-        login_data = login_resp.json()
-        assert "access_token" in login_data, "Login successful but no access token returned"
+    assert password, "Password must be stored in context during registration step"
+    
+    # Verify the user can log in with the password they registered with
+    login_resp = login(client, username=username, password=password)
+    assert login_resp.status_code == 200, (
+        f"User {username} was created but cannot log in with the registered password. "
+        f"Status: {login_resp.status_code}, Response: {login_resp.text}"
+    )
+    # Verify the login response contains an access token
+    login_data = login_resp.json()
+    assert "access_token" in login_data, "Login successful but no access token returned"
 
 
 @then(parsers.parse('the account with email "{identifier}" should not be created'))
