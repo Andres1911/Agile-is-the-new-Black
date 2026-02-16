@@ -70,3 +70,26 @@ def login(client, username="testuser", password="testpass123"):
 def auth_header(client, **kwargs):
     token = login(client, **kwargs).json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
+
+
+# ── Expense handling ────────────────────────────────────────────────────────
+
+@pytest.fixture(scope="function")
+def db():
+    """管理数据库生命周期"""
+    Base.metadata.create_all(bind=engine)
+    session = TestingSessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
+        Base.metadata.drop_all(bind=engine)
+
+
+def create_expense(client, headers, payload):
+    """发送创建账单请求"""
+    return client.post(
+        "/api/v1/expenses/create-and-split", 
+        json=payload, 
+        headers=headers
+    )

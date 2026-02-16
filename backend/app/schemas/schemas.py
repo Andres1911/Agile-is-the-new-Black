@@ -4,6 +4,8 @@ from pydantic import BaseModel, ConfigDict, EmailStr
 
 from app.models.models import ExpenseStatus, VoteStatus
 
+from typing import List, Optional
+
 # ── User schemas ──────────────────────────────────────────────────────────
 
 
@@ -125,6 +127,18 @@ class Expense(ExpenseBase):
 
 class ExpenseWithShares(Expense):
     shares: list[ExpenseShare] = []
+
+class ManualShare(BaseModel):
+    user_id: int
+    amount: float
+
+class ExpenseCreate(BaseModel):
+    description: str
+    amount: float
+    category: str | None = None
+    split_evenly: bool
+    include_creator: bool
+    manual_shares: Optional[List[ManualShare]] = None
 
 
 # ── Token schemas ────────────────────────────────────────────────────────
