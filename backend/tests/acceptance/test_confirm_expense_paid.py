@@ -213,9 +213,30 @@ def when_attempt_confirm_male(client, context, username, expense_id, amount):
 
 
 @then(parsers.parse('the system records the payment'))
-def then_system_records_payment(context):
+def then_system_records_payment(db, context, datatable):
+    """Verify 200 response and, if table provided, that the payment is reflected in DB (payer's share)."""
     assert context["response"].status_code == 200
     assert context["response"].json().get("detail") == "Payment recorded"
+    if not datatable or len(datatable) < 2:
+        return
+    rows = get_table_dicts(datatable)
+    db.expire_all()
+    for row in rows:
+        payer = row.get("payer", "").strip()
+        expense_id_key = row.get("expenseId", "").strip()
+        amount_cad = float(row.get("amountCAD", 0))
+        eid = context["expense_ids"][expense_id_key]
+        user = db.query(User).filter(User.username == payer).first()
+        assert user is not None, f"Payer {payer} not found"
+        share = (
+            db.query(ExpenseShare)
+            .filter(ExpenseShare.expense_id == eid, ExpenseShare.user_id == user.id)
+            .first()
+        )
+        assert share is not None, f"No share for payer {payer} on expense {expense_id_key}"
+        assert share.paid_amount >= amount_cad, (
+            f"Payment not recorded: {payer} share has paid_amount {share.paid_amount}, expected at least {amount_cad}"
+        )
 
 
 @then(parsers.parse('expense "{expense_id}" has the following updated expense shares'))
