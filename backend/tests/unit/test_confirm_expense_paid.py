@@ -1,14 +1,7 @@
 """Unit tests for confirm expense share payment (ID010 / TID022)."""
 
-import pytest
-
 from app.models.models import Expense, ExpenseShare, ExpenseStatus, User
-from tests.conftest import (
-    TestingSessionLocal,
-    auth_header,
-    create_expense,
-    register,
-)
+from tests.conftest import auth_header, create_expense, register
 
 
 def _setup_household_and_expense(client, db):

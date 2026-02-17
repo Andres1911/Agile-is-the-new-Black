@@ -4,8 +4,6 @@ from pydantic import BaseModel, ConfigDict, EmailStr
 
 from app.models.models import ExpenseStatus, VoteStatus
 
-from typing import List, Optional
-
 # ── User schemas ──────────────────────────────────────────────────────────
 
 
@@ -111,11 +109,6 @@ class ExpenseBase(BaseModel):
     date: datetime | None = None
 
 
-class ExpenseCreate(ExpenseBase):
-    household_id: int
-    shares: list[ExpenseShareCreate] | None = None
-
-
 class Expense(ExpenseBase):
     model_config = ConfigDict(from_attributes=True)
 
@@ -128,9 +121,11 @@ class Expense(ExpenseBase):
 class ExpenseWithShares(Expense):
     shares: list[ExpenseShare] = []
 
+
 class ManualShare(BaseModel):
     user_id: int
     amount: float
+
 
 class ExpenseCreate(BaseModel):
     description: str
@@ -138,7 +133,7 @@ class ExpenseCreate(BaseModel):
     category: str | None = None
     split_evenly: bool
     include_creator: bool
-    manual_shares: Optional[List[ManualShare]] = None
+    manual_shares: list[ManualShare] | None = None
 
 
 class ConfirmPaymentRequest(BaseModel):

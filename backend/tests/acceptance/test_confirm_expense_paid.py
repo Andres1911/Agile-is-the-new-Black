@@ -16,7 +16,7 @@ def get_table_dicts(datatable):
     if not datatable or len(datatable) < 2:
         return []
     keys = [c.strip() for c in datatable[0]]
-    return [dict(zip(keys, row)) for row in datatable[1:]]
+    return [dict(zip(keys, row, strict=True)) for row in datatable[1:]]
 
 
 @pytest.fixture()
@@ -51,13 +51,17 @@ def given_household_with_members(client, db, household_name, datatable):
     db.add(household)
     db.flush()
     for u in users:
-        db.add(HouseholdMember(user_id=u.id, household_id=household.id, is_admin=(u.username == names[0])))
+        db.add(
+            HouseholdMember(
+                user_id=u.id, household_id=household.id, is_admin=(u.username == names[0])
+            )
+        )
     db.commit()
 
 
 @given(parsers.parse('user "{username}" has created the following expense'))
 def given_alice_created_expense(client, db, context, username, datatable):
-    from app.models.models import Household, HouseholdMember
+    from app.models.models import HouseholdMember
 
     data = get_table_dicts(datatable)[0]
     expense_id_key = data["expenseId"].strip()
@@ -67,7 +71,11 @@ def given_alice_created_expense(client, db, context, username, datatable):
 
     headers = get_auth_header(client, username=username, password="Password123!")
     user = db.query(User).filter(User.username == username).first()
-    membership = db.query(HouseholdMember).filter(HouseholdMember.user_id == user.id, HouseholdMember.left_at.is_(None)).first()
+    membership = (
+        db.query(HouseholdMember)
+        .filter(HouseholdMember.user_id == user.id, HouseholdMember.left_at.is_(None))
+        .first()
+    )
     household_id = membership.household_id
     users_in_house = (
         db.query(User)
@@ -85,7 +93,10 @@ def given_alice_created_expense(client, db, context, username, datatable):
     elif expense_id_key == "EXP-102":
         manual_shares = [{"user_id": name_to_id["Bob"], "amount": 30.0}]
     else:
-        manual_shares = [{"user_id": uid, "amount": amount_cad / len(users_in_house)} for uid in name_to_id.values()]
+        manual_shares = [
+            {"user_id": uid, "amount": amount_cad / len(users_in_house)}
+            for uid in name_to_id.values()
+        ]
 
     payload = {
         "description": description,
@@ -131,14 +142,21 @@ def given_expense_has_shares(db, context, expense_id, datatable):
             assert 0 < share.paid_amount < share.amount_owed
 
 
-@given(parsers.parse('user "{username}" is authenticated as a household member'), target_fixture="context")
+@given(
+    parsers.parse('user "{username}" is authenticated as a household member'),
+    target_fixture="context",
+)
 def given_user_authenticated(client, username, context):
     context["auth_headers"] = get_auth_header(client, username=username, password="Password123!")
     context["current_user"] = username
     return context
 
 
-@given(parsers.parse('"{username}" has already confirmed payment of his expense share for expense "{expense_id}"'))
+@given(
+    parsers.parse(
+        '"{username}" has already confirmed payment of his expense share for expense "{expense_id}"'
+    )
+)
 def given_bob_already_confirmed(client, context, username, expense_id):
     eid = context["expense_ids"][expense_id]
     headers = get_auth_header(client, username=username, password="Password123!")
@@ -150,7 +168,11 @@ def given_bob_already_confirmed(client, context, username, expense_id):
     assert resp.status_code == 200, resp.text
 
 
-@given(parsers.parse('"{username}" has already confirmed payment of her expense share for expense "{expense_id}"'))
+@given(
+    parsers.parse(
+        '"{username}" has already confirmed payment of her expense share for expense "{expense_id}"'
+    )
+)
 def given_cara_already_confirmed(client, context, username, expense_id):
     eid = context["expense_ids"][expense_id]
     headers = get_auth_header(client, username=username, password="Password123!")
@@ -165,7 +187,11 @@ def given_cara_already_confirmed(client, context, username, expense_id):
 # ── WHEN ───────────────────────────────────────────────────────────────────
 
 
-@when(parsers.parse('"{username}" confirms payment of his expense share for expense "{expense_id}" with amount {amount} CAD'))
+@when(
+    parsers.parse(
+        '"{username}" confirms payment of his expense share for expense "{expense_id}" with amount {amount} CAD'
+    )
+)
 def when_confirm_payment_male(client, context, username, expense_id, amount):
     eid = context["expense_ids"][expense_id]
     headers = context["auth_headers"]
@@ -176,7 +202,11 @@ def when_confirm_payment_male(client, context, username, expense_id, amount):
     )
 
 
-@when(parsers.parse('"{username}" confirms payment of her expense share for expense "{expense_id}" with amount {amount} CAD'))
+@when(
+    parsers.parse(
+        '"{username}" confirms payment of her expense share for expense "{expense_id}" with amount {amount} CAD'
+    )
+)
 def when_confirm_payment_female(client, context, username, expense_id, amount):
     eid = context["expense_ids"][expense_id]
     headers = context["auth_headers"]
@@ -198,7 +228,11 @@ def when_attempt_confirm_no_amount(client, context, username, expense_id):
     )
 
 
-@when(parsers.parse('"{username}" attempts to confirm payment of his expense share for expense "{expense_id}" with amount {amount} CAD'))
+@when(
+    parsers.parse(
+        '"{username}" attempts to confirm payment of his expense share for expense "{expense_id}" with amount {amount} CAD'
+    )
+)
 def when_attempt_confirm_male(client, context, username, expense_id, amount):
     eid = context["expense_ids"][expense_id]
     headers = context["auth_headers"]
@@ -212,7 +246,7 @@ def when_attempt_confirm_male(client, context, username, expense_id, amount):
 # ── THEN ───────────────────────────────────────────────────────────────────
 
 
-@then(parsers.parse('the system records the payment'))
+@then(parsers.parse("the system records the payment"))
 def then_system_records_payment(db, context, datatable):
     """Verify 200 response and, if table provided, that the payment is reflected in DB (payer's share)."""
     assert context["response"].status_code == 200
@@ -272,7 +306,7 @@ def then_expense_status(db, context, expense_id, status):
     assert expense.status == ExpenseStatus[expected]
 
 
-@then('the system rejects the payment confirmation')
+@then("the system rejects the payment confirmation")
 def then_reject_payment(context):
     assert context["response"].status_code == 400
 
@@ -298,7 +332,11 @@ def then_expense_shares_unchanged(db, context, expense_id, datatable):
         assert abs((share.amount_owed - share.paid_amount) - outstanding) < 0.01
 
 
-@then(parsers.parse('"{username}" expense share for expense "{expense_id}" remains unchanged with outstanding {outstanding} CAD'))
+@then(
+    parsers.parse(
+        '"{username}" expense share for expense "{expense_id}" remains unchanged with outstanding {outstanding} CAD'
+    )
+)
 def then_share_unchanged(db, context, username, expense_id, outstanding):
     eid = context["expense_ids"][expense_id]
     user = db.query(User).filter(User.username == username).first()
