@@ -141,6 +141,12 @@ class ExpenseCreate(BaseModel):
     manual_shares: Optional[List[ManualShare]] = None
 
 
+class ConfirmPaymentRequest(BaseModel):
+    """Request body for confirming payment of an expense share."""
+
+    amount: float
+
+
 # ── Token schemas ────────────────────────────────────────────────────────
 
 

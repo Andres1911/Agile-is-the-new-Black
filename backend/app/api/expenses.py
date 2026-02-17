@@ -1,13 +1,18 @@
-# Expenses API — placeholder
-# Will be re-implemented with ExpenseShare / splitting / voting logic.
-from fastapi import APIRouter
-
+# Expenses API — create-and-split + confirm-payment (ID010)
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from app.models.models import *
-from app.db.database import get_db
+
 from app.api.auth import get_current_user
-from app.schemas.schemas import ExpenseCreate
+from app.db.database import get_db
+from app.models.models import (
+    Expense,
+    ExpenseShare,
+    ExpenseStatus,
+    HouseholdMember,
+    User,
+    VoteStatus,
+)
+from app.schemas.schemas import ConfirmPaymentRequest, ExpenseCreate
 
 router = APIRouter()
 
@@ -147,3 +152,78 @@ def create_and_split(
         raise HTTPException(status_code=500, detail="Database error during creation")
 
     return {"detail": "success"}
+
+
+@router.post("/{expense_id}/confirm-payment", status_code=200)
+def confirm_payment(
+    expense_id: int,
+    body: ConfirmPaymentRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Allow the current user to confirm payment of their share of an expense (ID010)."""
+    if body.amount <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Payment amount must be greater than zero",
+        )
+
+    # Ensure user is in a household and expense belongs to that household
+    membership = (
+        db.query(HouseholdMember)
+        .filter(
+            HouseholdMember.user_id == current_user.id,
+            HouseholdMember.left_at.is_(None),
+        )
+        .first()
+    )
+    if not membership:
+        raise HTTPException(
+            status_code=400,
+            detail="User is not currently in any household",
+        )
+
+    expense = db.query(Expense).filter(Expense.id == expense_id).first()
+    if not expense or expense.household_id != membership.household_id:
+        raise HTTPException(
+            status_code=404,
+            detail="Expense not found",
+        )
+
+    share = (
+        db.query(ExpenseShare)
+        .filter(
+            ExpenseShare.expense_id == expense_id,
+            ExpenseShare.user_id == current_user.id,
+        )
+        .first()
+    )
+    if not share:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot confirm payment: You do not have an expense share for this expense",
+        )
+
+    outstanding = share.amount_owed - share.paid_amount
+    if share.is_paid or outstanding <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot confirm payment: Your expense share is already fully paid",
+        )
+    if body.amount > outstanding:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot confirm payment: Amount {body.amount:.2f} CAD exceeds outstanding balance of {outstanding:.2f} CAD",
+        )
+
+    share.paid_amount += body.amount
+    if share.paid_amount >= share.amount_owed:
+        share.is_paid = True
+
+    # Update expense settlement status
+    all_shares = db.query(ExpenseShare).filter(ExpenseShare.expense_id == expense_id).all()
+    all_paid = all(s.is_paid for s in all_shares)
+    expense.status = ExpenseStatus.FULLY_SETTLED if all_paid else ExpenseStatus.PARTIALLY_SETTLED
+
+    db.commit()
+    return {"detail": "Payment recorded"}
