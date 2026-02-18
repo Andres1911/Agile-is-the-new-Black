@@ -83,7 +83,7 @@ def _create_household(db, ctx, household_name: str):
 
 @given(parsers.parse('user "{username}" is authenticated'))
 def user_is_authenticated(context, username):
-    # For this feature, we don’t need real auth tokens (no household API endpoint).
+    # For this feature, we don't need real auth tokens (no household API endpoint).
     # We store it anyway so the scenario reads naturally.
     context["current_user"] = username
 
