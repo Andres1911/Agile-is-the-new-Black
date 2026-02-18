@@ -4,8 +4,7 @@ import pytest
 from fastapi import HTTPException
 
 from app.api.households import get_household_members
-from app.models.models import Household, HouseholdMember
-from app.models.models import User as UserModel
+from app.models.models import Household, HouseholdMember, User as UserModel
 
 
 # helpers needed to construct the objects returned by the mocked database queries
