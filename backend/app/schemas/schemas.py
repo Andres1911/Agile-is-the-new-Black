@@ -27,6 +27,18 @@ class User(UserBase):
     created_at: datetime
 
 
+class PublicUser(BaseModel):
+    """Public user schema for displaying user info to other household members.
+
+    Only includes non-sensitive fields: id, username, and full_name.
+    """
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    username: str
+    full_name: str | None = None
+
+
 # ── HouseholdMember schemas ──────────────────────────────────────────────
 
 
@@ -51,7 +63,7 @@ class HouseholdMember(HouseholdMemberBase):
 class HouseholdMemberWithUser(HouseholdMember):
     """Includes the nested User object for richer responses."""
 
-    user: User
+    user: PublicUser
 
 
 # ── Household schemas ────────────────────────────────────────────────────
