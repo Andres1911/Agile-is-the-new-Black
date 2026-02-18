@@ -1,7 +1,9 @@
 import pytest
 from pytest_bdd import given, parsers, scenarios, then, when
-from app.models.models import User, Household, HouseholdMember
-from tests.conftest import register as _register_helper, login as _login_helper
+
+from app.models.models import Household, HouseholdMember, User
+from tests.conftest import login as _login_helper
+from tests.conftest import register as _register_helper
 
 # Link to the feature file
 scenarios("features/ID005_Join_A_Household.feature")

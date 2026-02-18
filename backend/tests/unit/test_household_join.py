@@ -1,8 +1,8 @@
-import unittest
 
-import pytest
-from app.models.models import User as UserModel, Household, HouseholdMember
-from tests.conftest import register, login, TestingSessionLocal
+from app.models.models import Household, HouseholdMember
+from app.models.models import User as UserModel
+from tests.conftest import TestingSessionLocal, login, register
+
 
 class TestJoinHouseholdFlows:
 
