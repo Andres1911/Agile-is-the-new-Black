@@ -19,7 +19,7 @@ def context():
 
 def _get_table_dicts(datatable):
     keys = datatable[0]
-    return [dict(zip(keys, row)) for row in datatable[1:]]
+    return [dict(zip(keys, row, strict=False)) for row in datatable[1:]]
 
 @given(parsers.parse('household "{household_name}" exists with members'), target_fixture="household_ctx")
 def given_household_with_members(client, db, household_name, datatable):
@@ -104,11 +104,7 @@ def given_household_does_not_exist(db, household_name):
 @when(parsers.parse('"{username}" requests the member list for household "{household_name}"'), target_fixture="context")
 def when_request_member_list(client, db, context, username, household_name):
     household = db.query(Household).filter(Household.name == household_name).first()
-    if household is None:
-        # Household doesn't exist — use a sentinel ID so the API returns 404
-        household_id = 99999
-    else:
-        household_id = household.id
+    household_id = 99999 if household is None else household.id
 
     context["response"] = client.get(
         f"/api/v1/households/{household_id}/members",
