@@ -74,6 +74,7 @@ def auth_header(client, **kwargs):
 
 # ── Expense handling ────────────────────────────────────────────────────────
 
+
 @pytest.fixture(scope="function")
 def db():
     """管理数据库生命周期"""
@@ -88,8 +89,4 @@ def db():
 
 def create_expense(client, headers, payload):
     """发送创建账单请求"""
-    return client.post(
-        "/api/v1/expenses/create-and-split", 
-        json=payload, 
-        headers=headers
-    )
+    return client.post("/api/v1/expenses/create-and-split", json=payload, headers=headers)

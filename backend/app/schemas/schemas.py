@@ -32,6 +32,7 @@ class PublicUser(BaseModel):
 
     Only includes non-sensitive fields: id, username, and full_name.
     """
+
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -140,9 +141,11 @@ class Expense(ExpenseBase):
 class ExpenseWithShares(Expense):
     shares: list[ExpenseShare] = []
 
+
 class ManualShare(BaseModel):
     user_id: int
     amount: float
+
 
 class ExpenseCreate(BaseModel):
     description: str
