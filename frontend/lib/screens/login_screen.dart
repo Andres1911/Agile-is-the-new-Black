@@ -133,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       obscureText: _obscurePassword,
                       textInputAction: TextInputAction.done,
                       autofillHints: const [AutofillHints.password],
-                      onFieldSubmitted: (_) => _login(),
+                      onFieldSubmitted: (_) => !_isLoading ? _login() : null,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please enter your password';
