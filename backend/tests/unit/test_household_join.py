@@ -1,11 +1,9 @@
-
 from app.models.models import Household, HouseholdMember
 from app.models.models import User as UserModel
 from tests.conftest import TestingSessionLocal, login, register
 
 
 class TestJoinHouseholdFlows:
-
     # --- Normal Flow ---
 
     def test_join_household_success(self, client):
@@ -25,10 +23,7 @@ class TestJoinHouseholdFlows:
         user_id = user.id
         db.close()
 
-        payload = {
-            "household_name": "The North Star",
-            "invite_code": "MYHOUSE2024"
-        }
+        payload = {"household_name": "The North Star", "invite_code": "MYHOUSE2024"}
         resp = client.post("/api/v1/households/join", json=payload, headers=headers)
 
         # Assertions
@@ -37,10 +32,13 @@ class TestJoinHouseholdFlows:
 
         # Verify DB Binding matches the model
         db_check = TestingSessionLocal()
-        binding = db_check.query(HouseholdMember).filter(
-            HouseholdMember.user_id == user_id,
-            HouseholdMember.household_id == target_house.id
-        ).first()
+        binding = (
+            db_check.query(HouseholdMember)
+            .filter(
+                HouseholdMember.user_id == user_id, HouseholdMember.household_id == target_house.id
+            )
+            .first()
+        )
 
         assert binding is not None
         assert binding.left_at is None
