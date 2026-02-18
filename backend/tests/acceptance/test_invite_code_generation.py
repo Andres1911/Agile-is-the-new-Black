@@ -136,7 +136,11 @@ def given_user_not_admin(db, username, household_name):
 # ── WHEN ────────────────────────────────────────────────────────────────
 
 
-@when(parsers.parse('the user requests to generate a random invite code for the household "{household_name}"'))
+@when(
+    parsers.parse(
+        'the user requests to generate a random invite code for the household "{household_name}"'
+    )
+)
 def when_generate_random_code(db, context, household_name):
     username = context["current_user"]
     household = _get_or_create_household(db, household_name)
@@ -188,7 +192,9 @@ def when_set_manual_code(db, context, manual_code, household_name):
 # ── THEN ────────────────────────────────────────────────────────────────
 
 
-@then(parsers.parse('the household "{household_name}" should have the invite code as its attribute'))
+@then(
+    parsers.parse('the household "{household_name}" should have the invite code as its attribute')
+)
 def then_household_has_generated_code(db, context, household_name):
     household = db.query(Household).filter(Household.name == household_name).first()
     assert household is not None
@@ -199,7 +205,11 @@ def then_household_has_generated_code(db, context, household_name):
     assert context.get("message") == "Success"
 
 
-@then(parsers.parse('the household "{household_name}" should have the invite code "{manual_code}" as its attribute'))
+@then(
+    parsers.parse(
+        'the household "{household_name}" should have the invite code "{manual_code}" as its attribute'
+    )
+)
 def then_household_has_manual_code(db, context, household_name, manual_code):
     household = db.query(Household).filter(Household.name == household_name).first()
     assert household is not None
