@@ -9,6 +9,7 @@ from app.models.models import User as UserModel
 
 # helpers needed to construct the objects returned by the mocked database queries
 
+
 def _make_user(id_: int, username: str) -> UserModel:
     user = UserModel()
     user.id = id_
@@ -36,6 +37,7 @@ def _make_membership(user_id: int, household_id: int, is_admin: bool = False) ->
 
 
 # Normal Flow Test
+
 
 class TestGetHouseholdMembersNormalFlow:
     def test_member_can_view_member_list(self):
@@ -120,6 +122,7 @@ class TestGetHouseholdMembersNormalFlow:
 
 
 # Error Flow Tests
+
 
 class TestGetHouseholdMembersErrorFlows:
     def test_household_not_found_raises_404(self):

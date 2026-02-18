@@ -13,15 +13,21 @@ from tests.conftest import register as register_user
 
 scenarios("features/ID008_View_Household_Member_list.feature")
 
+
 @pytest.fixture()
 def context():
     return {}
+
 
 def _get_table_dicts(datatable):
     keys = datatable[0]
     return [dict(zip(keys, row, strict=False)) for row in datatable[1:]]
 
-@given(parsers.parse('household "{household_name}" exists with members'), target_fixture="household_ctx")
+
+@given(
+    parsers.parse('household "{household_name}" exists with members'),
+    target_fixture="household_ctx",
+)
 def given_household_with_members(client, db, household_name, datatable):
     """Create the household and its members from the Background table."""
     rows = _get_table_dicts(datatable)  # [{member, role}, ...]
@@ -56,14 +62,20 @@ def given_household_with_members(client, db, household_name, datatable):
     return {"household": new_household, "members": user_objects}
 
 
-@given(parsers.parse('user "{username}" is authenticated as a household member'), target_fixture="context")
+@given(
+    parsers.parse('user "{username}" is authenticated as a household member'),
+    target_fixture="context",
+)
 def given_user_authenticated(client, context, username):
     context["auth_headers"] = get_auth_header(client, username=username, password="Password123!")
     context["current_user"] = username
     return context
 
 
-@given(parsers.parse('user "{username}" is authenticated and exists in the system'), target_fixture="context")
+@given(
+    parsers.parse('user "{username}" is authenticated and exists in the system'),
+    target_fixture="context",
+)
 def given_user_exists_not_member(client, db, context, username):
     register_user(
         client,
@@ -83,10 +95,14 @@ def given_user_not_a_member(db, username, household_name):
     user = db.query(UserModel).filter(UserModel.username == username).first()
     household = db.query(Household).filter(Household.name == household_name).first()
     if user and household:
-        membership = db.query(HouseholdMember).filter(
-            HouseholdMember.user_id == user.id,
-            HouseholdMember.household_id == household.id,
-        ).first()
+        membership = (
+            db.query(HouseholdMember)
+            .filter(
+                HouseholdMember.user_id == user.id,
+                HouseholdMember.household_id == household.id,
+            )
+            .first()
+        )
         assert membership is None, f"{username} should not be in {household_name}"
 
 
@@ -101,7 +117,11 @@ def given_household_does_not_exist(db, household_name):
     existing = db.query(Household).filter(Household.name == household_name).first()
     assert existing is None, f"Household '{household_name}' should not exist"
 
-@when(parsers.parse('"{username}" requests the member list for household "{household_name}"'), target_fixture="context")
+
+@when(
+    parsers.parse('"{username}" requests the member list for household "{household_name}"'),
+    target_fixture="context",
+)
 def when_request_member_list(client, db, context, username, household_name):
     household = db.query(Household).filter(Household.name == household_name).first()
     household_id = 99999 if household is None else household.id
@@ -113,13 +133,19 @@ def when_request_member_list(client, db, context, username, household_name):
     return context
 
 
-@when(parsers.parse('an unauthenticated request is made to view the member list for household "{household_name}"'), target_fixture="context")
+@when(
+    parsers.parse(
+        'an unauthenticated request is made to view the member list for household "{household_name}"'
+    ),
+    target_fixture="context",
+)
 def when_unauthenticated_request(client, db, context, household_name):
     household = db.query(Household).filter(Household.name == household_name).first()
     household_id = household.id if household else 99999
 
     context["response"] = client.get(f"/api/v1/households/{household_id}/members")
     return context
+
 
 @then(parsers.parse('the system returns the following members for "{household_name}"'))
 def then_verify_member_list(context, datatable):
