@@ -24,16 +24,14 @@ def given_no_households(db):
     assert db.query(Household).count() == 0
 
 
-@given(parsers.parse("a household exists with invite code \"{code}\""))
+@given(parsers.parse('a household exists with invite code "{code}"'))
 def given_household_exists(db, code):
     db.add(Household(name="Seed", invite_code=code))
     db.commit()
 
 
 @given(
-    parsers.parse(
-        "the invite code generator will propose codes \"{first}\" then \"{second}\""
-    ),
+    parsers.parse('the invite code generator will propose codes "{first}" then "{second}"'),
     target_fixture="context",
 )
 def given_proposed_codes(context, first, second):
@@ -80,11 +78,11 @@ def then_charset(context):
     assert re.fullmatch(r"[A-Z0-9]+", code)
 
 
-@then(parsers.parse("the invite code should not equal \"{code}\""))
+@then(parsers.parse('the invite code should not equal "{code}"'))
 def then_not_equal(context, code):
     assert context["invite_code"] != code
 
 
-@then(parsers.parse("the invite code should equal \"{code}\""))
+@then(parsers.parse('the invite code should equal "{code}"'))
 def then_equal(context, code):
     assert context["invite_code"] == code
