@@ -88,5 +88,9 @@ def db():
 
 
 def create_expense(client, headers, payload):
-    """发送创建账单请求"""
-    return client.post("/api/v1/expenses/create-and-split", json=payload, headers=headers)
+    """Send create-and-split expense request."""
+    return client.post(
+        "/api/v1/expenses/create-and-split",
+        json=payload,
+        headers=headers,
+    )

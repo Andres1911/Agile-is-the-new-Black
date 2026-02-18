@@ -15,6 +15,8 @@ class ExpenseStatus(enum.StrEnum):
     PENDING = "PENDING"
     FINALIZED = "FINALIZED"
     DISPUTED = "DISPUTED"
+    PARTIALLY_SETTLED = "PARTIALLY_SETTLED"
+    FULLY_SETTLED = "FULLY_SETTLED"
 
 
 class VoteStatus(enum.StrEnum):

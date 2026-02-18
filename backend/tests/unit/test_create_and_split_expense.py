@@ -1,14 +1,9 @@
-from app.models.models import (
-    User as UserModel,
-    Household,
-    HouseholdMember,
-    Expense,
-    ExpenseShare,
-    VoteStatus,
-)
-from ..conftest import register, login, TestingSessionLocal
 from datetime import UTC, datetime
-import pytest
+
+from app.models.models import Expense, ExpenseShare, Household, HouseholdMember, VoteStatus
+from app.models.models import User as UserModel
+
+from ..conftest import TestingSessionLocal, login, register
 
 
 class TestExpenseMembershipEdgeCases:
@@ -25,10 +20,10 @@ class TestExpenseMembershipEdgeCases:
         token = auth_resp.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
 
-        # 2. 数据库检查（确认没有家庭关系）
+        # 2. DB check: ensure no household membership
         db = TestingSessionLocal()
         user = db.query(UserModel).filter(UserModel.username == "lonely_alice").first()
-        # 物理删除可能存在的家庭关联（如果有的话），确保环境纯净
+        # Remove any existing household links for clean state
         db.query(HouseholdMember).filter(HouseholdMember.user_id == user.id).delete()
         db.commit()
         db.close()
@@ -61,7 +56,7 @@ class TestExpenseRoommateEdgeCases:
         token = auth_resp.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
 
-        # 2. 设置数据库状态：创建一个只有 Alice 的家庭
+        # 2. DB state: household with only Alice
         db = TestingSessionLocal()
         user = db.query(UserModel).filter(UserModel.username == "solo_alice").first()
 
@@ -74,13 +69,13 @@ class TestExpenseRoommateEdgeCases:
         db.commit()
         db.close()
 
-        # 3. 发送请求：不包含自己 (include_creator=False)
+        # 3. Request without self (include_creator=False)
         payload = {
             "description": "Ghost Party",
             "amount": 50.0,
             "category": "Entertainment",
             "split_evenly": True,
-            "include_creator": False,  # 关键点：不包含自己，但家里没别人
+            "include_creator": False,  # key: no self, no other members
         }
         resp = client.post("/api/v1/expenses/create-and-split", json=payload, headers=headers)
 
@@ -178,7 +173,7 @@ class TestExpenseSplitIncludingCreator:
 
         assert len(actual_shares) == 5
 
-        # 验证总额（浮点数建议用 abs < 0.001）
+        # Verify total (float tolerance)
         total_calculated = sum(s.amount_owed for s in actual_shares)
         assert abs(total_calculated - total_amount) == 0
 
@@ -193,7 +188,7 @@ class TestExpenseSplitIncludingCreator:
             else:
                 assert actual.vote_status == VoteStatus.PENDING
 
-            # 验证金额是否为 20.00 或 20.01（处理余数逻辑）
+            # Amount should be 20.00 or 20.01 (remainder handling)
             assert actual.amount_owed in [20.00, 20.01], (
                 f"Wrong amount {actual.amount_owed} for {user.username}"
             )
@@ -225,7 +220,7 @@ class TestManualSplitEdgeCases:
         db.add(HouseholdMember(user_id=alice.id, household_id=h.id))
         db.commit()
 
-        # 3. 发送请求：试图分摊给 stranger.id
+        # 3. Request: assign share to stranger.id
         payload = {
             "description": "Hack test",
             "amount": 100.0,
@@ -267,7 +262,7 @@ class TestManualSplitEdgeCases:
         db.add(HouseholdMember(user_id=bob.id, household_id=h.id))
         db.commit()
 
-        # 2. 发送请求：给 Bob 分摊 0 元
+        # 2. Request: assign Bob 0 amount
         payload = {
             "description": "Zero split test",
             "amount": 100.0,
@@ -276,7 +271,7 @@ class TestManualSplitEdgeCases:
             "include_creator": True,
             "manual_shares": [
                 {"user_id": alice.id, "amount": 100.0},
-                {"user_id": bob.id, "amount": 0.0},  # 金额为 0，非法
+                {"user_id": bob.id, "amount": 0.0},  # zero amount, invalid
             ],
         }
         resp = client.post("/api/v1/expenses/create-and-split", json=payload, headers=headers)

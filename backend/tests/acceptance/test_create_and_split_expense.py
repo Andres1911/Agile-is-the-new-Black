@@ -1,20 +1,22 @@
 import pytest
 from pytest_bdd import given, parsers, scenarios, then, when
+
 from app.models.models import (
-    User,
+    Expense,
+    ExpenseShare,
+    ExpenseStatus,
     Household,
     HouseholdMember,
-    Expense,
-    ExpenseStatus,
-    ExpenseShare,
+    User,
     VoteStatus,
 )
+
+from ..conftest import auth_header as get_auth_header
+from ..conftest import create_expense as api_create_expense
 
 # --- 显式从 conftest 导入助手函数 ---
 # 这样你就不用在每个 step 函数的参数列表里写这些名字了
 from ..conftest import register as register_user
-from ..conftest import auth_header as get_auth_header
-from ..conftest import create_expense as api_create_expense
 
 # 1. 绑定 Feature 文件
 scenarios("features/ID007_Create_Split_Expense.feature")
@@ -32,7 +34,7 @@ def context():
 def get_table_dicts(datatable):
     """将列表格式的表格转换为字典列表"""
     keys = datatable[0]
-    return [dict(zip(keys, row)) for row in datatable[1:]]
+    return [dict(zip(keys, row, strict=False)) for row in datatable[1:]]
 
 
 # ── GIVEN steps ───────────────────────────────────────────────────────────
@@ -40,7 +42,7 @@ def get_table_dicts(datatable):
 
 @given(parsers.parse('household "{household_name}" exists with members'))
 def given_household_with_members(client, db, household_name):
-    # 注意：这里去掉了参数里的 register，直接使用导入的函数
+    # Note: use imported helper, no register in params
     names = ["Alice", "Bob", "Cara"]
     user_objects = []
 
@@ -96,7 +98,7 @@ def when_set_expense_base_details(username, datatable, context):
     context["description"] = data["description"]
     context["amount"] = float(data["amountCAD"])
 
-    # 可选项：如果表格里没这一列，或者值为空字符串，则设为 None (数据库里的 NULL)
+    # Optional: if column missing or empty string, set to None (DB NULL)
     category_val = data.get("category")
     context["category"] = category_val if category_val else None
 
@@ -227,8 +229,7 @@ def then_verify_full_expense_attributes(db, context, username, h_name, amount, d
     # B. 描述校验
     assert expense.description == desc
 
-    # C. 分类校验 (重点：处理 None)
-    # 如果 Gherkin 里写的是 "None"，则预期数据库里是 None (NULL)
+    # C. Category check (handle None: Gherkin "None" means DB NULL)
     expected_category = None if cat == "None" else cat
     assert expense.category == expected_category, (
         f"Expected category {expected_category}, but got {expense.category}"
@@ -307,8 +308,6 @@ def then_verify_expense_shares_all_attributes(db, context, datatable):
         assert actual.vote_status == expected_vote, (
             f"vote_status mismatch for {user.username}: Expected {expected_vote}, got {actual.vote_status}."
         )
-
-    print(f"Successfully verified all attributes for {len(actual_shares)} ExpenseShare records.")
 
 
 @then(parsers.parse("the system rejects the expense creation"))
