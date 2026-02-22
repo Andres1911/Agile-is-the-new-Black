@@ -4,10 +4,11 @@ from sqlalchemy.orm import Session
 from app.api.auth import get_current_user
 from app.core.invite_codes import generate_unique_invite_code
 from app.db.database import get_db
-from app.models.models import Household, HouseholdMember
+from app.models.models import Expense, Household, HouseholdMember
 from app.models.models import User as UserModel
 from app.schemas.schemas import Household as HouseholdSchema
 from app.schemas.schemas import HouseholdCreate, HouseholdMemberWithUser
+from app.schemas.schemas import Expense as ExpenseSchema
 
 router = APIRouter()
 
@@ -113,3 +114,51 @@ def get_household_members(
         .all()
     )
     return members
+
+@router.get("/{household_id}/expenses", response_model=list[ExpenseSchema])
+def get_household_expense_history(
+    household_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user),
+):
+    """Return the history of expenses for a household.
+
+    Rules:
+    - The household must exist.
+    - The requesting user must be an active member of that household.
+    - Return list sorted by date (newest first).
+    """
+    # Check household exists
+    household = db.query(Household).filter(Household.id == household_id).first()
+    if household is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Household not found",
+        )
+
+    #check requesting user is an active member
+    membership = (
+        db.query(HouseholdMember)
+        .filter(
+            HouseholdMember.household_id == household_id,
+            HouseholdMember.user_id == current_user.id,
+            HouseholdMember.left_at.is_(None),
+        )
+        .first()
+    )
+    if membership is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: You are not a member of this household",
+        )
+
+    #Return all expenses for the household
+    #.order_by(Expense.date.desc()) ensures the history view shows recent items first
+    expenses = (
+        db.query(Expense)
+        .filter(Expense.household_id == household_id)
+        .order_by(Expense.date.desc())
+        .all()
+    )
+    
+    return expenses
