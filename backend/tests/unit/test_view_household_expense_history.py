@@ -1,13 +1,15 @@
-import pytest
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
-from datetime import datetime, UTC
+
+import pytest
 from fastapi import HTTPException, status
 
 from app.api.households import get_household_expense_history
 from app.models.models import Expense, Household, HouseholdMember
 from app.models.models import User as UserModel
 
-#helpers
+# helpers
+
 
 def _make_user(id_: int, username: str) -> UserModel:
     user = UserModel()
@@ -15,11 +17,13 @@ def _make_user(id_: int, username: str) -> UserModel:
     user.username = username
     return user
 
+
 def _make_household(id_: int, name: str) -> Household:
     hh = Household()
     hh.id = id_
     hh.name = name
     return hh
+
 
 def _make_expense(id_: int, hh_id: int, description: str, amount: float) -> Expense:
     e = Expense()
@@ -30,10 +34,11 @@ def _make_expense(id_: int, hh_id: int, description: str, amount: float) -> Expe
     e.date = datetime.now(UTC)
     return e
 
-#unit tests
+
+# unit tests
+
 
 class TestGetExpenseHistory:
-    
     @pytest.fixture
     def alice(self):
         return _make_user(1, "Alice")
@@ -45,7 +50,7 @@ class TestGetExpenseHistory:
         membership = HouseholdMember(user_id=alice.id, household_id=hh.id, left_at=None)
         expenses = [
             _make_expense(1, hh.id, "Groceries", 50.0),
-            _make_expense(2, hh.id, "Internet", 60.0)
+            _make_expense(2, hh.id, "Internet", 60.0),
         ]
 
         # Define specific query chains to prevent false positives
@@ -63,7 +68,7 @@ class TestGetExpenseHistory:
         db.query.side_effect = lambda model: {
             Household: hh_query,
             HouseholdMember: mem_query,
-            Expense: exp_query
+            Expense: exp_query,
         }.get(model)
 
         # Act
@@ -85,7 +90,7 @@ class TestGetExpenseHistory:
         hh_query.filter.return_value.first.return_value = hh
         mem_query = MagicMock()
         mem_query.filter.return_value.first.return_value = membership
-        
+
         # Track the exp_query specifically to check the order_by call
         exp_query = MagicMock()
         exp_filter_res = MagicMock()
@@ -94,7 +99,7 @@ class TestGetExpenseHistory:
         db.query.side_effect = lambda model: {
             Household: hh_query,
             HouseholdMember: mem_query,
-            Expense: exp_query
+            Expense: exp_query,
         }.get(model)
 
         get_household_expense_history(hh.id, db, alice)
@@ -110,15 +115,15 @@ class TestGetExpenseHistory:
 
         hh_query = MagicMock()
         hh_query.filter.return_value.first.return_value = hh
-        
+
         mem_query = MagicMock()
-        mem_query.filter.return_value.first.return_value = None # No membership found
+        mem_query.filter.return_value.first.return_value = None  # No membership found
 
         db.query.side_effect = lambda model: hh_query if model is Household else mem_query
 
         with pytest.raises(HTTPException) as exc:
             get_household_expense_history(hh.id, db, alice)
-        
+
         assert exc.value.status_code == status.HTTP_403_FORBIDDEN
         assert "not a member" in exc.value.detail
 
@@ -145,7 +150,7 @@ class TestGetExpenseHistory:
 
         with pytest.raises(HTTPException) as exc:
             get_household_expense_history(999, db, alice)
-        
+
         assert exc.value.status_code == status.HTTP_404_NOT_FOUND
 
     def test_get_expense_history_user_already_left(self, alice):
@@ -153,19 +158,19 @@ class TestGetExpenseHistory:
         db = MagicMock()
         hh = _make_household(10, "PastHouse")
 
-        #Setup the Household Mock (to pass the first check)
+        # Setup the Household Mock (to pass the first check)
         hh_query = MagicMock()
         hh_query.filter.return_value.first.return_value = hh
 
-        #Setup the Member Mock (to return None, simulating the 'left_at' filter)
+        # Setup the Member Mock (to return None, simulating the 'left_at' filter)
         mem_query = MagicMock()
         mem_query.filter.return_value.first.return_value = None
 
-        #Apply the side_effect so db.query knows which mock to use
+        # Apply the side_effect so db.query knows which mock to use
         db.query.side_effect = lambda model: hh_query if model is Household else mem_query
 
-        #Act & Assert
+        # Act & Assert
         with pytest.raises(HTTPException) as exc:
             get_household_expense_history(hh.id, db, alice)
-        
+
         assert exc.value.status_code == 403

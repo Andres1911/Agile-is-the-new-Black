@@ -6,9 +6,9 @@ from app.core.invite_codes import generate_unique_invite_code
 from app.db.database import get_db
 from app.models.models import Expense, Household, HouseholdMember
 from app.models.models import User as UserModel
+from app.schemas.schemas import Expense as ExpenseSchema
 from app.schemas.schemas import Household as HouseholdSchema
 from app.schemas.schemas import HouseholdCreate, HouseholdMemberWithUser
-from app.schemas.schemas import Expense as ExpenseSchema
 
 router = APIRouter()
 
@@ -115,6 +115,7 @@ def get_household_members(
     )
     return members
 
+
 @router.get("/{household_id}/expenses", response_model=list[ExpenseSchema])
 def get_household_expense_history(
     household_id: int,
@@ -136,7 +137,7 @@ def get_household_expense_history(
             detail="Household not found",
         )
 
-    #check requesting user is an active member
+    # check requesting user is an active member
     membership = (
         db.query(HouseholdMember)
         .filter(
@@ -152,13 +153,13 @@ def get_household_expense_history(
             detail="Access denied: You are not a member of this household",
         )
 
-    #Return all expenses for the household
-    #.order_by(Expense.date.desc()) ensures the history view shows recent items first
+    # Return all expenses for the household
+    # .order_by(Expense.date.desc()) ensures the history view shows recent items first
     expenses = (
         db.query(Expense)
         .filter(Expense.household_id == household_id)
         .order_by(Expense.date.desc())
         .all()
     )
-    
+
     return expenses
