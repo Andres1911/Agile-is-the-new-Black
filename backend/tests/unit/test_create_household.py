@@ -8,34 +8,34 @@ from tests.conftest import TestingSessionLocal, login, register
 
 
 class TestCreateHousehold:
-
     def test_create_household_success(self, client):
-        #arrange
+        # arrange
         register(client, username="alice", email="alice@test.com")
         auth_resp = login(client, username="alice")
         headers = {"Authorization": f"Bearer {auth_resp.json()['access_token']}"}
 
-        #act
+        # act
         payload = {
             "name": "Agile Manor",
             "description": "A test household",
-            "address": "123 University St"
+            "address": "123 University St",
         }
         response = client.post("/api/v1/households/", json=payload, headers=headers)
 
-        #assert
+        # assert
         assert response.status_code == status.HTTP_201_CREATED
         data = response.json()
         assert data["name"] == "Agile Manor"
         assert len(data["invite_code"]) == 8
 
-        #DB Check
+        # DB Check
         db = TestingSessionLocal()
         user = db.query(UserModel).filter(UserModel.username == "alice").first()
-        membership = db.query(HouseholdMember).filter(
-            HouseholdMember.household_id == data["id"],
-            HouseholdMember.user_id == user.id
-        ).first()
+        membership = (
+            db.query(HouseholdMember)
+            .filter(HouseholdMember.household_id == data["id"], HouseholdMember.user_id == user.id)
+            .first()
+        )
         assert membership is not None
         assert membership.is_admin is True
         db.close()
@@ -97,7 +97,10 @@ class TestCreateHousehold:
         response = client.post("/api/v1/households/", json=payload, headers=headers)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "user is already registered as living in another household" in response.json()["detail"].lower()
+        assert (
+            "user is already registered as living in another household"
+            in response.json()["detail"].lower()
+        )
         db.close()
 
     def test_create_household_unauthorized(self, client):
@@ -121,11 +124,7 @@ class TestCreateHousehold:
         auth_resp = login(client, username="long_str")
         headers = {"Authorization": f"Bearer {auth_resp.json()['access_token']}"}
 
-        payload = {
-            "name": "Big House",
-            "description": "A" * 1000,
-            "address": "B" * 1000
-        }
+        payload = {"name": "Big House", "description": "A" * 1000, "address": "B" * 1000}
         response = client.post("/api/v1/households/", json=payload, headers=headers)
         data = response.json()
 
@@ -134,20 +133,19 @@ class TestCreateHousehold:
         assert data["description"] == "A" * 1000
         assert data["address"] == "B" * 1000
 
-
     def test_create_household_trims_whitespace(self, client):
         register(client, username="trim_user", email="trim@test.com")
         auth_resp = login(client, username="trim_user")
         headers = {"Authorization": f"Bearer {auth_resp.json()['access_token']}"}
 
         payload = {
-            "name": "  Space House  ",  #spaces on both sides
-            "description": "Cleaning up"
+            "name": "  Space House  ",  # spaces on both sides
+            "description": "Cleaning up",
         }
         response = client.post("/api/v1/households/", json=payload, headers=headers)
 
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.json()["name"] == "Space House" #should be trimmed
+        assert response.json()["name"] == "Space House"  # should be trimmed
 
     def test_create_household_unicode_support(self, client):
         register(client, username="euro_user", email="euro@test.com")
