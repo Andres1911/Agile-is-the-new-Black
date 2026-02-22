@@ -1,9 +1,8 @@
-import uuid
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.auth import get_current_user
+from app.core.invite_codes import generate_unique_invite_code
 from app.db.database import get_db
 from app.models.models import Household, HouseholdMember
 from app.models.models import User as UserModel
@@ -46,7 +45,7 @@ def create_household(
         )
 
     # Create the Household
-    invite_code = str(uuid.uuid4())[:8].upper()
+    invite_code = generate_unique_invite_code(db)
     new_household = Household(
         name=household_in.name,
         description=household_in.description,
