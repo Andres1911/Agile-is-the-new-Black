@@ -1,7 +1,10 @@
 import pytest
 from pytest_bdd import given, parsers, scenarios, then, when
-from app.models.models import Household, HouseholdMember, User as UserModel
-from tests.conftest import TestingSessionLocal, login, register as _register_helper
+
+from app.models.models import Household, HouseholdMember
+from app.models.models import User as UserModel
+from tests.conftest import TestingSessionLocal, login
+from tests.conftest import register as _register_helper
 
 #Link to the feature file
 scenarios("features/ID003_Create_A_Household.feature")
@@ -46,27 +49,26 @@ def step_household_already_exists(name):
         db.commit()
     db.close()
 
-@given(parsers.parse('the user "{UserName}" is not currently living in any household'))
-def step_user_homeless(UserName):
+@given(parsers.parse('the user "{username}" is not currently living in any household'))
+def step_user_homeless(username):
     """
-    Verifies that the user exists and is not currently associated 
-    with any household in the database.
+    Verifies that the user exists and is not currently associated with any household in the database.
     """
     db = TestingSessionLocal()
-    
+
     #Get the user
-    user = db.query(UserModel).filter(UserModel.username == UserName).first()
-    assert user is not None, f"Pre-condition failed: User {UserName} not found in DB."
+    user = db.query(UserModel).filter(UserModel.username == username).first()
+    assert user is not None, f"Pre-condition failed: User {username} not found in DB."
 
     #check for any record in the membership table
     #we check for any membership where 'left_at' is None (meaning they are currently 'in')
     active_membership = db.query(HouseholdMember).filter(
         HouseholdMember.user_id == user.id,
-        HouseholdMember.left_at == None
+        HouseholdMember.left_at is None
     ).first()
 
-    assert active_membership is None, f"Pre-condition failed: User {UserName} is already linked to a household!"
-    
+    assert active_membership is None, f"Pre-condition failed: User {username} is already linked to a household!"
+
     db.close()
 
 @given(parsers.parse('the user "{username}" is already living in the household "{current_home}"'))
@@ -124,7 +126,7 @@ def then_verify_binding(username, name, context):
     user = db.query(UserModel).filter(UserModel.username == username).first()
     hh = db.query(Household).filter(Household.name == name).first()
     binding = db.query(HouseholdMember).filter_by(user_id=user.id, household_id=hh.id).first()
-    
+
     assert binding is not None
     context["current_binding"] = binding # Store for the "And the binding..." steps
     db.close()

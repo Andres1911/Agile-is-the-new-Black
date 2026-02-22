@@ -1,12 +1,14 @@
-import pytest
-from datetime import datetime, UTC
+from datetime import UTC, datetime
+
 from fastapi import status
+
 from app.models.models import Household, HouseholdMember
 from app.models.models import User as UserModel
 from tests.conftest import TestingSessionLocal, login, register
 
+
 class TestCreateHousehold:
-    
+
     def test_create_household_success(self, client):
         #arrange
         register(client, username="alice", email="alice@test.com")
@@ -45,7 +47,7 @@ class TestCreateHousehold:
 
         db = TestingSessionLocal()
         user = db.query(UserModel).filter(UserModel.username == "leaver").first()
-        
+
         # Setup an old household that they already left
         old_hh = Household(name="Old Home", invite_code="BYEBYE12")
         db.add(old_hh)
@@ -120,7 +122,7 @@ class TestCreateHousehold:
         headers = {"Authorization": f"Bearer {auth_resp.json()['access_token']}"}
 
         payload = {
-            "name": "Big House", 
+            "name": "Big House",
             "description": "A" * 1000,
             "address": "B" * 1000
         }
@@ -143,7 +145,7 @@ class TestCreateHousehold:
             "description": "Cleaning up"
         }
         response = client.post("/api/v1/households/", json=payload, headers=headers)
-        
+
         assert response.status_code == status.HTTP_201_CREATED
         assert response.json()["name"] == "Space House" #should be trimmed
 
@@ -154,6 +156,6 @@ class TestCreateHousehold:
 
         payload = {"name": "Maison d'Été 🏡"}
         response = client.post("/api/v1/households/", json=payload, headers=headers)
-        
+
         assert response.status_code == status.HTTP_201_CREATED
         assert response.json()["name"] == "Maison d'Été 🏡"

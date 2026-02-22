@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -5,10 +7,8 @@ from app.api.auth import get_current_user
 from app.db.database import get_db
 from app.models.models import Household, HouseholdMember
 from app.models.models import User as UserModel
-from app.schemas.schemas import HouseholdMemberWithUser, HouseholdCreate, Household as HouseholdSchema
-
-import uuid
-
+from app.schemas.schemas import Household as HouseholdSchema
+from app.schemas.schemas import HouseholdCreate, HouseholdMemberWithUser
 
 router = APIRouter()
 
@@ -21,7 +21,7 @@ def create_household(
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_user)
 ):
-    
+
     """Create a Household
 
     Rules:
@@ -30,11 +30,11 @@ def create_household(
     - User that creates a new household should not be currently registered in a household
     """
 
-    # Check for duplicate name 
+    # Check for duplicate name
     existing_hh = db.query(Household).filter(Household.name == household_in.name).first()
     if existing_hh:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="Name already exists"
         )
 
@@ -43,10 +43,10 @@ def create_household(
         HouseholdMember.user_id == current_user.id,
         HouseholdMember.left_at.is_(None)
     ).first()
-    
+
     if active_membership:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="User is already registered as living in another household"
         )
 
@@ -59,19 +59,19 @@ def create_household(
         invite_code=invite_code
     )
     db.add(new_household)
-    db.flush() 
+    db.flush()
 
-    # Create the Admin Binding 
+    # Create the Admin Binding
     new_member = HouseholdMember(
         user_id=current_user.id,
         household_id=new_household.id,
-        is_admin=True 
+        is_admin=True
     )
     db.add(new_member)
-    
-    db.commit() 
+
+    db.commit()
     db.refresh(new_household)
-    
+
     return new_household
 
 @router.get("/{household_id}/members", response_model=list[HouseholdMemberWithUser])
