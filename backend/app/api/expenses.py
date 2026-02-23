@@ -23,15 +23,17 @@ def create_and_split(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if not expense_in.split_evenly and expense_in.manual_shares:
-        # Check if any share belongs to the current user
-        if any(s.user_id == current_user.id for s in expense_in.manual_shares):
-            expense_in.include_creator = True
-    
+    if (
+        not expense_in.split_evenly
+        and expense_in.manual_shares
+        and any(s.user_id == current_user.id for s in expense_in.manual_shares)
+    ):
+        expense_in.include_creator = True
+
 
     if not expense_in.description:
         raise HTTPException(
-            status_code=400, 
+            status_code=400,
             detail="Valid description is required."
         )
 
