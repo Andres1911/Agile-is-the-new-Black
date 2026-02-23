@@ -73,6 +73,9 @@ class HouseholdBase(BaseModel):
     description: str | None = None
     address: str | None = None
 
+    # this handle cases where house name: "home" and " home " become equivalent and hence is not allowed
+    model_config = ConfigDict(str_strip_whitespace=True)
+
 
 class HouseholdCreate(HouseholdBase):
     pass
