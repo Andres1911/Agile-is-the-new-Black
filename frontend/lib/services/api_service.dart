@@ -237,4 +237,38 @@ class ApiService {
       throw Exception('Failed to remove member: ${response.body}');
     }
   }
+
+  // create and split expesne
+  // ------------------------------------------------------------------------------
+  Future<void> createAndSplitExpense(Map<String, dynamic> data) async {
+    await _loadToken(); 
+    final response = await http.post(
+      Uri.parse('$baseUrl/expenses/create-and-split'),
+      headers: _getHeaders(),
+      body: jsonEncode(data),
+    );
+
+    if (response.statusCode != 201) {
+      final error = jsonDecode(response.body);
+      throw Exception(error['detail'] ?? 'Failed to create expense');
+    }
+  }
+
+  
+  Future<Map<String, dynamic>> fetchActiveMembers() async {
+    await _loadToken();
+    final response = await http.get(
+      Uri.parse('$baseUrl/households/me/active-household-members'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Failed to load members: ${response.body}');
+    }
+  }
+
+  // ------------------------------------------------------------------------------
+
 }
