@@ -30,12 +30,8 @@ def create_and_split(
     ):
         expense_in.include_creator = True
 
-
     if not expense_in.description:
-        raise HTTPException(
-            status_code=400,
-            detail="Valid description is required."
-        )
+        raise HTTPException(status_code=400, detail="Valid description is required.")
 
     # --- 2. Identity check: find user's current household ---
     membership = (
