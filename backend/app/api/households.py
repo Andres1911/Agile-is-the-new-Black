@@ -12,6 +12,37 @@ from app.schemas.schemas import HouseholdCreate, HouseholdMemberWithUser
 
 router = APIRouter()
 
+# This is a helper method, currently only used by the frontend to get the list of active household members for the current user, but could be useful for other purposes in the future as well
+@router.get("/me/active-household-members")
+def get_current_user_active_household_members(
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user)
+):
+    # Find which household the current user is active in
+    membership = db.query(HouseholdMember).filter(
+        HouseholdMember.user_id == current_user.id,
+        HouseholdMember.left_at.is_(None)
+    ).first()
+
+    if not membership:
+        raise HTTPException(status_code=404, detail="No active household found")
+
+    # Fetch all users in that household
+    users = db.query(UserModel).join(
+        HouseholdMember, HouseholdMember.user_id == UserModel.id
+    ).filter(
+        HouseholdMember.household_id == membership.household_id,
+        HouseholdMember.left_at.is_(None)
+    ).all()
+
+    return {
+        "household_id": membership.household_id,
+        "members": [
+            {"id": u.id, "username": u.username, "full_name": u.full_name} 
+            for u in users
+        ]
+    }
+
 
 @router.post("/", response_model=HouseholdSchema, status_code=status.HTTP_201_CREATED)
 def create_household(

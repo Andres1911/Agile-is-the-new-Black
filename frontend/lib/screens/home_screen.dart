@@ -207,86 +207,188 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _showAddExpenseDialog(BuildContext context) async {
+    List<dynamic> activeMembers = [];
+    int? householdId;
+    int? currentUserId;
+
+    try {
+      final data = await _apiService.fetchActiveMembers();
+      activeMembers = data['members'];
+      householdId = data['household_id'];
+      currentUserId = data['current_user_id'];
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      return;
+    }
+
     final amountController = TextEditingController();
     final descriptionController = TextEditingController();
     final categoryController = TextEditingController();
-    int? selectedHouseholdId;
+    
+    bool splitEvenly = true;
+    bool includeCreator = true; 
+    // Map to store raw strings from the input fields
+    Map<int, String> manualInputs = {};
 
     return showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('Add Expense'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: amountController,
-                  decoration: const InputDecoration(labelText: 'Amount'),
-                  keyboardType: TextInputType.number,
-                ),
-                TextField(
-                  controller: descriptionController,
-                  decoration: const InputDecoration(labelText: 'Description'),
-                ),
-                TextField(
-                  controller: categoryController,
-                  decoration: const InputDecoration(labelText: 'Category'),
-                ),
-                if (_households.isNotEmpty)
-                  DropdownButtonFormField<int>(
-                    value: selectedHouseholdId,
-                    decoration: const InputDecoration(
-                      labelText: 'Household (Optional)',
-                    ),
-                    items: _households.map((h) {
-                      return DropdownMenuItem(
-                        value: h.id,
-                        child: Text(h.name),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      selectedHouseholdId = value;
-                    },
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: const Text('Add & Split Expense'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: amountController,
+                        decoration: const InputDecoration(labelText: 'Total Amount', prefixText: '\$ '),
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      ),
+                      TextField(controller: descriptionController, decoration: const InputDecoration(labelText: 'Description')),
+                      TextField(controller: categoryController, decoration: const InputDecoration(labelText: 'Category (Optional)')),
+                      const Divider(height: 30),
+                      
+                      SwitchListTile(
+                        title: const Text('Split Evenly'),
+                        value: splitEvenly,
+                        onChanged: (val) => setStateDialog(() => splitEvenly = val),
+                      ),
+
+                      if (!splitEvenly) ...[
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8.0),
+                          child: Text("Assign Individual Shares:", style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                        ...activeMembers.map((member) {
+                          final int userId = member['id'];
+                          final String name = userId == currentUserId ? "${member['username']} (Me)" : member['username'];
+
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4.0),
+                            child: Row(
+                              children: [
+                                Expanded(child: Text(name)),
+                                SizedBox(
+                                  width: 90,
+                                  child: TextField(
+                                    // Removed 'const' from parent or used static access correctly
+                                    decoration: const InputDecoration(isDense: true, border: OutlineInputBorder(), prefixText: '\$'),
+                                    keyboardType: TextInputType.text, 
+                                    onChanged: (val) {
+                                      if (val.trim().isEmpty) {
+                                        manualInputs.remove(userId);
+                                      } else {
+                                        manualInputs[userId] = val.trim();
+                                        
+                                        // If user fills their own box, ensure include_creator is true
+                                        if (userId == currentUserId) {
+                                          setStateDialog(() => includeCreator = true);
+                                        }
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ],
+
+                      if (splitEvenly)
+                        CheckboxListTile(
+                          title: const Text('Include Me'),
+                          value: includeCreator,
+                          onChanged: (val) => setStateDialog(() => includeCreator = val ?? true),
+                        ),
+                    ],
                   ),
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                ElevatedButton(
+                  onPressed: () async {
+                    final totalStr = amountController.text.trim();
+                    final total = double.tryParse(totalStr) ?? 0.0;
+                    final description = descriptionController.text.trim();
+
+                    if (description.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a description')));
+                      return;
+                    }
+                    if (totalStr.isEmpty || double.tryParse(totalStr) == null || total <= 0) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a valid total amount')));
+                      return;
+                    }
+
+                    bool finalIncludeCreator = splitEvenly ? includeCreator : false; 
+                    List<Map<String, dynamic>>? finalManualShares;
+
+                    if (!splitEvenly) {
+                      List<Map<String, dynamic>> sharesList = [];
+                      
+                      for (var entry in manualInputs.entries) {
+                        final userId = entry.key;
+                        final rawValue = entry.value;
+
+                        double? parsedValue = double.tryParse(rawValue);
+                        if (parsedValue == null) {
+                          // Throw error if it's not a number (e.g., "ddd")
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Invalid number for user $userId: "$rawValue"'))
+                          );
+                          return;
+                        }
+
+                        // Add to DTO even if it's 0 or negative; backend will handle the logic
+                        sharesList.add({
+                          'user_id': userId,
+                          'amount': parsedValue,
+                        });
+
+                        if (userId == currentUserId) {
+                          finalIncludeCreator = true;
+                        }
+                      }
+
+                      if (sharesList.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill at least one share')));
+                        return;
+                      }
+                      
+                      finalManualShares = sharesList;
+                    }
+
+                    try {
+                      await _apiService.createAndSplitExpense({
+                        'amount': total,
+                        'description': description,
+                        'category': categoryController.text.isEmpty ? null : categoryController.text,
+                        'household_id': householdId,
+                        'split_evenly': splitEvenly,
+                        'include_creator': finalIncludeCreator, 
+                        'manual_shares': splitEvenly ? null : finalManualShares,
+                      });
+
+                      if (!context.mounted) return;
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Success!")));
+                      _loadData(); 
+                    } catch (e) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                    }
+                  },
+                  child: const Text('Submit'),
+                ),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final amount = double.tryParse(amountController.text);
-                if (amount != null && descriptionController.text.isNotEmpty) {
-                  try {
-                    await _apiService.createExpense({
-                      'amount': amount,
-                      'description': descriptionController.text,
-                      'category': categoryController.text.isEmpty
-                          ? null
-                          : categoryController.text,
-                      'date': DateTime.now().toIso8601String(),
-                      'household_id': selectedHouseholdId,
-                    });
-                    
-                    if (!context.mounted) return;
-                    Navigator.pop(context);
-                    _loadData();
-                  } catch (e) {
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Failed to add expense: $e')),
-                    );
-                  }
-                }
-              },
-              child: const Text('Add'),
-            ),
-          ],
+            );
+          },
         );
       },
     );
