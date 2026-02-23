@@ -38,7 +38,7 @@ def get_current_user_active_household_members(
     return {
         "household_id": membership.household_id,
         "members": [
-            {"id": u.id, "username": u.username, "full_name": u.full_name} 
+            {"id": u.id, "username": u.username, "full_name": u.full_name}
             for u in users
         ]
     }
