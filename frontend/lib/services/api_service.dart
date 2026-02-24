@@ -155,7 +155,7 @@ class ApiService {
   Future<List<dynamic>> getHouseholdExpenses(int householdId) async {
     await _loadToken();
     final response = await http.get(
-      Uri.parse('$baseUrl/expenses/household/$householdId'),
+      Uri.parse('$baseUrl/households/$householdId/expenses'),
       headers: _getHeaders(),
     );
 
