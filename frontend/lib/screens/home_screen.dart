@@ -111,7 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
       ),
-      floatingActionButton: _selectedIndex == 0
+      floatingActionButton: _selectedIndex == 0 && _household != null
           ? FloatingActionButton(
               onPressed: () => _showAddExpenseDialog(context),
               child: const Icon(Icons.add),
