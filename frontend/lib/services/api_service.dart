@@ -194,8 +194,17 @@ class ApiService {
     if (response.statusCode == 201) {
       return jsonDecode(response.body);
     } else {
-      final error = jsonDecode(response.body);
-      throw Exception(error['detail'] ?? 'Failed to create household');
+      try {
+        final error = jsonDecode(response.body);
+        String message = 'Failed to create household';
+        if (error is Map<String, dynamic> && error['detail'] is String) {
+          message = error['detail'] as String;
+        }
+        throw Exception(message);
+      } on FormatException {
+        // Response body was not valid JSON; fall back to a generic message.
+        throw Exception('Failed to create household');
+      }
     }
   }
 
