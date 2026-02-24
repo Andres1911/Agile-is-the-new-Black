@@ -18,6 +18,7 @@ class Settings(BaseSettings):
 
     # CORS - comma-separated list of allowed origins
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:8080"]
+    CORS_ORIGIN_REGEX: str = r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
 
 
 settings = Settings()
