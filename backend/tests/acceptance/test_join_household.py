@@ -1,16 +1,12 @@
 import pytest
 from pytest_bdd import given, parsers, scenarios, then, when
 
-
 from app.models.models import Household, HouseholdMember, User
 from tests.conftest import login as _login_helper
 from tests.conftest import register as _register_helper
 
-
 # Link to the feature file
 scenarios("features/ID005_Join_A_Household.feature")
-
-
 
 
 @pytest.fixture()
@@ -19,11 +15,7 @@ def context():
     return {}
 
 
-
-
 # GIVEN
-
-
 
 
 @given(
@@ -42,16 +34,12 @@ def given_another_household_exists(db, target_house, valid_code):
         db.commit()
 
 
-
-
 @given(parsers.parse('a user with username "{username}" already exists in the system'))
 def given_user_exists(client, username):
     # Use helper from conftest to seed the user
     _register_helper(
         client, username=username, email=f"{username.lower()}@test.com", password="Password123!"
     )
-
-
 
 
 @given(parsers.parse('the user "{username}" is logged in'), target_fixture="context")
@@ -62,8 +50,6 @@ def given_user_logged_in(client, username, context):
     context["auth_headers"] = {"Authorization": f"Bearer {token}"}
     context["username"] = username
     return context
-
-
 
 
 @given(parsers.parse('the user "{username}" does not currently belong to any household'))
@@ -78,8 +64,6 @@ def given_user_has_no_household(db, username):
     assert membership is None
 
 
-
-
 @given(parsers.parse('a household named "{household_name}" exists in the system'))
 def given_household_exists(db, household_name):
     # Check if exists, or create it
@@ -90,15 +74,11 @@ def given_household_exists(db, household_name):
         db.commit()
 
 
-
-
 @given(parsers.parse('the household "{household_name}" has the invite code "{invite_code}"'))
 def given_household_has_code(db, household_name, invite_code):
     house = db.query(Household).filter(Household.name == household_name).first()
     house.invite_code = invite_code
     db.commit()
-
-
 
 
 @given(parsers.parse('the household "{household_name}" has a code that is NOT "{wrong_code}"'))
@@ -109,16 +89,12 @@ def given_household_has_different_code(db, household_name, wrong_code):
         db.commit()
 
 
-
-
 @given(parsers.parse('a household named "{fake_house}" does not exist in the system'))
 def given_household_does_not_exist(db, fake_house):
     house = db.query(Household).filter(Household.name == fake_house).first()
     if house:
         db.delete(house)
         db.commit()
-
-
 
 
 @given(parsers.parse('the user "{username}" is already living in the household "{current_home}"'))
@@ -132,11 +108,7 @@ def given_user_already_in_house(db, username, current_home):
     db.commit()
 
 
-
-
 # WHEN
-
-
 
 
 @when(
@@ -150,8 +122,6 @@ def when_request_join(client, context, household_name, invite_code):
     context["response"] = resp
 
 
-
-
 @when(
     parsers.parse(
         'the user requests to join household "{fake_house}" with any invite code "{invite_code}"'
@@ -162,11 +132,7 @@ def when_request_join_any_code(client, context, fake_house, invite_code):
     when_request_join(client, context, fake_house, invite_code)
 
 
-
-
 # THEN
-
-
 
 
 @then(parsers.parse('the message "{message}" is issued'))
@@ -179,8 +145,6 @@ def then_message_issued(context, message):
         # Check if the error message is in the response detail
         assert resp.status_code in [400, 404]
         assert message.lower() in resp.json()["detail"].lower()
-
-
 
 
 @then(
@@ -197,8 +161,6 @@ def then_verify_binding_exists(db, username, household_name):
     assert binding is not None
 
 
-
-
 @then(parsers.parse("the binding should have LiveIn = true"))
 def then_verify_live_in(db, context):
     # Retrieve binding based on context username
@@ -209,8 +171,6 @@ def then_verify_live_in(db, context):
         .first()
     )
     assert binding is not None  # left_at is None implies currently living in
-
-
 
 
 @then(parsers.parse("the binding should have IsAdmin = false"))
@@ -224,8 +184,6 @@ def then_verify_not_admin(db, context):
     assert binding.is_admin is False
 
 
-
-
 @then(parsers.parse('the user "{username}" should still not belong to any household'))
 def then_verify_still_no_household(db, username):
     user = db.query(User).filter(User.username == username).first()
@@ -237,8 +195,6 @@ def then_verify_still_no_household(db, username):
     assert active_membership is None
 
 
-
-
 @then(parsers.parse('the user "{username}" should still only be bound to "{current_home}"'))
 def then_verify_original_household_only(db, username, current_home):
     user = db.query(User).filter(User.username == username).first()
@@ -248,12 +204,9 @@ def then_verify_original_household_only(db, username, current_home):
         .all()
     )
 
-
     assert len(memberships) == 1
     house = db.get(Household, memberships[0].household_id)
     assert house.name == current_home
-
-
 
 
 @then(
