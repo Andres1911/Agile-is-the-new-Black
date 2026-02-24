@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../models/expense.dart';
 import '../models/household.dart';
+import 'add_household_screen.dart';
 import 'login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -14,8 +15,9 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final _apiService = ApiService();
   List<Expense> _expenses = [];
-  List<Household> _households = [];
+  Household? _household;
   bool _isLoading = false;
+  String? _errorMessage;
   int _selectedIndex = 0;
 
   @override
@@ -27,27 +29,48 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
+      _errorMessage = null;
     });
 
-    try {
-      final expensesData = await _apiService.getExpenses();
-      final householdsData = await _apiService.getHouseholds();
+    Household? loadedHousehold;
+    List<Expense> loadedExpenses = [];
+    String? error;
 
-      setState(() {
-        _expenses = expensesData.map((e) => Expense.fromJson(e)).toList();
-        _households = householdsData.map((h) => Household.fromJson(h)).toList();
-      });
+    try {
+      final data = await _apiService.getMyHousehold();
+      if (data != null) {
+        loadedHousehold = Household.fromJson(data);
+
+        try {
+          final expensesData =
+              await _apiService.getHouseholdExpenses(loadedHousehold.id);
+          loadedExpenses =
+              expensesData.map((e) => Expense.fromJson(e)).toList();
+        } catch (e) {
+          debugPrint('Failed to load expenses: $e');
+          error = 'Failed to load expenses. Please try again.';
+        }
+      }
     } catch (e) {
-      if (!mounted) return;
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load data: ${e.toString()}')),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+      debugPrint('Failed to load household data: $e');
+      error = 'Failed to load data. Please try again.';
+    }
+
+    if (mounted) {
+      setState(() {
+        _household = loadedHousehold;
+        _expenses = loadedExpenses;
+        _isLoading = false;
+        _errorMessage = error;
+      });
+      if (error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error),
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(label: 'Retry', onPressed: _loadData),
+          ),
+        );
       }
     }
   }
@@ -107,14 +130,21 @@ class _HomeScreenState extends State<HomeScreen> {
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
       ),
-      floatingActionButton: _selectedIndex == 0
+      floatingActionButton: _selectedIndex == 0 && _household != null
           ? FloatingActionButton(
               onPressed: () => _showAddExpenseDialog(context),
               child: const Icon(Icons.add),
             )
-          : _selectedIndex == 1
+          : _selectedIndex == 1 && _household == null
               ? FloatingActionButton(
-                  onPressed: () => _showAddHouseholdDialog(context),
+                  onPressed: () async {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const AddHouseholdScreen()),
+                    );
+                    if (result == true) _loadData();
+                  },
                   child: const Icon(Icons.add),
                 )
               : null,
@@ -153,30 +183,30 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHouseholdsTab() {
-    if (_households.isEmpty) {
+    if (_household == null) {
       return const Center(
         child: Text('No households yet. Create your first household!'),
       );
     }
 
-    return ListView.builder(
-      itemCount: _households.length,
-      itemBuilder: (context, index) {
-        final household = _households[index];
-        return Card(
+    final household = _household!;
+    return ListView(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      children: [
+        Card(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: ListTile(
             leading: const CircleAvatar(
               child: Icon(Icons.home),
             ),
             title: Text(household.name),
-            subtitle: Text(household.description ?? 'No description'),
-            trailing: Text(
-              '${household.members?.length ?? 0} members',
-            ),
+            subtitle: Text(household.address ?? household.description ?? 'No description'),
+            trailing: household.inviteCode != null
+                ? Text(household.inviteCode!)
+                : null,
           ),
-        );
-      },
+        ),
+      ],
     );
   }
 
@@ -389,63 +419,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             );
           },
-        );
-      },
-    );
-  }
-
-  Future<void> _showAddHouseholdDialog(BuildContext context) async {
-    final nameController = TextEditingController();
-    final descriptionController = TextEditingController();
-
-    return showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Add Household'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(labelText: 'Name'),
-              ),
-              TextField(
-                controller: descriptionController,
-                decoration: const InputDecoration(labelText: 'Description'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (nameController.text.isNotEmpty) {
-                  try {
-                    await _apiService.createHousehold({
-                      'name': nameController.text,
-                      'description': descriptionController.text.isEmpty
-                          ? null
-                          : descriptionController.text,
-                    });
-                    
-                    if (!context.mounted) return;
-                    Navigator.pop(context);
-                    _loadData();
-                  } catch (e) {
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Failed to add household: $e')),
-                    );
-                  }
-                }
-              },
-              child: const Text('Add'),
-            ),
-          ],
         );
       },
     );

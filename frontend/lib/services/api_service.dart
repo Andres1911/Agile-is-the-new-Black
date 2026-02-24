@@ -155,7 +155,7 @@ class ApiService {
   Future<List<dynamic>> getHouseholdExpenses(int householdId) async {
     await _loadToken();
     final response = await http.get(
-      Uri.parse('$baseUrl/expenses/household/$householdId'),
+      Uri.parse('$baseUrl/households/$householdId/expenses'),
       headers: _getHeaders(),
     );
 
@@ -167,17 +167,19 @@ class ApiService {
   }
 
   // Household endpoints
-  Future<List<dynamic>> getHouseholds() async {
+  Future<Map<String, dynamic>?> getMyHousehold() async {
     await _loadToken();
     final response = await http.get(
-      Uri.parse('$baseUrl/households/'),
+      Uri.parse('$baseUrl/households/me'),
       headers: _getHeaders(),
     );
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
+    } else if (response.statusCode == 404) {
+      return null;
     } else {
-      throw Exception('Failed to get households: ${response.body}');
+      throw Exception('Failed to get household: ${response.body}');
     }
   }
 
@@ -192,7 +194,42 @@ class ApiService {
     if (response.statusCode == 201) {
       return jsonDecode(response.body);
     } else {
-      throw Exception('Failed to create household: ${response.body}');
+      try {
+        final error = jsonDecode(response.body);
+        String message = 'Failed to create household';
+
+        // Handle common FastAPI error formats
+        if (error is Map<String, dynamic>) {
+          final detail = error['detail'];
+          if (detail is String && detail.isNotEmpty) {
+            message = detail;
+          } else if (detail is List && detail.isNotEmpty) {
+            final first = detail.first;
+            if (first is Map<String, dynamic> && first['msg'] is String && (first['msg'] as String).isNotEmpty) {
+              message = first['msg'] as String;
+            } else {
+              // Fall back to a serialized representation of the detail list
+              message = jsonEncode(detail);
+            }
+          }
+        } else if (error is List && error.isNotEmpty) {
+          final first = error.first;
+          if (first is Map<String, dynamic> && first['msg'] is String && (first['msg'] as String).isNotEmpty) {
+            message = first['msg'] as String;
+          } else {
+            message = jsonEncode(error);
+          }
+        }
+
+        // As a last resort, include the raw response body if available
+        if (message == 'Failed to create household' && response.body.isNotEmpty) {
+          message = 'Failed to create household: ${response.body}';
+        }
+        throw Exception(message);
+      } on FormatException {
+        // Response body was not valid JSON; fall back to a generic message.
+        throw Exception('Failed to create household');
+      }
     }
   }
 
