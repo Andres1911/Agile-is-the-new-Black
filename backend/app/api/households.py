@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
 
 from app.api.auth import get_current_user
 from app.core.invite_codes import generate_unique_invite_code
@@ -9,6 +10,10 @@ from app.models.models import User as UserModel
 from app.schemas.schemas import Expense as ExpenseSchema
 from app.schemas.schemas import Household as HouseholdSchema
 from app.schemas.schemas import HouseholdCreate, HouseholdMemberWithUser
+
+class HouseholdJoin(BaseModel):
+    household_name: str
+    invite_code: str
 
 router = APIRouter()
 
@@ -219,3 +224,60 @@ def get_household_expense_history(
     )
 
     return expenses
+
+@router.post("/join")
+def join_household(
+        join_in: HouseholdJoin,
+        db: Session = Depends(get_db),
+        current_user: UserModel = Depends(get_current_user),
+):
+    """Join a household using an invite code.
+
+
+    Rules:
+    - The household must exist by name.
+    - The invite code must match the household's code.
+    - The user must not already be an active member of any household.
+    """
+    # 1. Look up the household by name
+    household = db.query(Household).filter(Household.name == join_in.household_name).first()
+    if not household:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Household not found",
+        )
+
+
+    # 2. Verify invite code
+    if household.invite_code != join_in.invite_code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid invite code",
+        )
+
+
+    # 3. Check if user is already in a household (left_at is None)
+    active_membership = (
+        db.query(HouseholdMember)
+        .filter(HouseholdMember.user_id == current_user.id, HouseholdMember.left_at.is_(None))
+        .first()
+    )
+    if active_membership:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User is already registered as living in another household",
+        )
+
+
+    # 4. Create new membership binding
+    # (By default, left_at is None and is_admin is False)
+    new_member = HouseholdMember(
+        user_id=current_user.id,
+        household_id=household.id,
+        is_admin=False
+    )
+    db.add(new_member)
+    db.commit()
+
+
+    return {"message": "Success"}
