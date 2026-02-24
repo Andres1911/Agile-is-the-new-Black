@@ -63,6 +63,9 @@ def get_my_household(
         raise HTTPException(status_code=404, detail="No active household found")
 
     household = db.query(Household).filter(Household.id == membership.household_id).first()
+    if not household:
+        # Handle potential orphaned membership where the household has been deleted
+        raise HTTPException(status_code=404, detail="Household not found")
     return household
 
 
