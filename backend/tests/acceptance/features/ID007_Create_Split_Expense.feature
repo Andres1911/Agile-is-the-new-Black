@@ -11,8 +11,8 @@ Feature: Create and split an expense
       | Bob    |
       | Cara   |
 
-  # Normal Flow: Create expense and split among multiple members
-  Scenario: Member creates an expense and splits it among household members
+  # Normal Flow: Member creates an expense and splits it manually
+  Scenario: Member creates an expense and splits it manually
     Given user "Alice" is authenticated as a household member
     When "Alice" specifies an expense with the following details
       | description | amountCAD |
@@ -27,8 +27,8 @@ Feature: Create and split an expense
       | Bob   | 20.00       | 0.00        | False   | PENDING     |
       | Cara  | 40.00       | 0.00        | False   | PENDING     |
 
-  # Normal Flow: Equal split among all members
-  Scenario: Member creates an expense with equal split among all household members
+  # Normal Flow: Member creates an expense and splits it equally without including themselves
+  Scenario: Member creates an expense and splits it equally without including themselves
     Given user "Alice" is authenticated as a household member
     When "Alice" specifies an expense with the following details
       | description  | amountCAD | category    |
@@ -40,17 +40,13 @@ Feature: Create and split an expense
       | Bob   | 45.00       | 0.00        | False   | PENDING     |
       | Cara  | 45.00       | 0.00        | False   | PENDING     |
 
-  # Alternative Flow: Payee includes themselves in the split
-  Scenario: Payee includes themselves as a payer in the expense split
+  # Alternative Flow: Member creates an expense and splits it equally including themselves
+  Scenario: Member creates an expense and splits it equally including themselves
     Given user "Alice" is authenticated as a household member
     When "Alice" specifies an expense with the following details
       | description | amountCAD | category    |
       | Pizza night | 30.00     | food        |
-    And "Alice" creates and splits the expense among the following members
-      | payer | shareCAD |
-      | Alice | 10.00    |
-      | Bob   | 10.00    |
-      | Cara  | 10.00    |
+    And "Alice" creates and splits the expense equally with include_self="true"
     Then the system records an expense for "Alice" in "MapleHouse" with amount "30.00", description "Pizza night", category "food", and status "PENDING"
     And the expense has the following expense shares
       | user  | amount_owed | paid_amount | is_paid | vote_status |
@@ -58,7 +54,7 @@ Feature: Create and split an expense
       | Bob   | 10.00       | 0.00        | False   | PENDING     |
       | Cara  | 10.00       | 0.00        | False   | PENDING     |
 
-  # Error Flow: Split amounts do not match total expense
+  # Error Flow: Member attempts to create expense where split amounts do not equal total
   Scenario: Member attempts to create expense where split amounts do not equal total
     Given user "Alice" is authenticated as a household member
     When "Alice" specifies an expense with the following details
@@ -71,8 +67,8 @@ Feature: Create and split an expense
     Then the system rejects the expense creation
     And the system displays error message "Cannot create expense: Split amounts 50.00 CAD do not equal expense total 60.00 CAD"
 
-  # Error Flow: Create expense with zero or negative amount
-  Scenario: Member attempts to create expense with invalid amount
+  # Error Flow: Member attempts to create expense with negative amount
+  Scenario: Member attempts to create expense with negative amount
     Given user "Alice" is authenticated as a household member
     When "Alice" specifies an expense with the following details
       | description | amountCAD | category    |

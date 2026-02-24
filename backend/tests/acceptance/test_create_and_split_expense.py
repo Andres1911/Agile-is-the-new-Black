@@ -14,25 +14,24 @@ from app.models.models import (
 from ..conftest import auth_header as get_auth_header
 from ..conftest import create_expense as api_create_expense
 
-# --- 显式从 conftest 导入助手函数 ---
-# 这样你就不用在每个 step 函数的参数列表里写这些名字了
+# --- Explicitly import helper functions from conftest ---
 from ..conftest import register as register_user
 
-# 1. 绑定 Feature 文件
+# 1. Bind Feature file
 scenarios("features/ID007_Create_Split_Expense.feature")
 
 
 @pytest.fixture()
 def context():
-    """共享上下文"""
+    """Shared context"""
     return {"manual_shares": [], "include_creator": True, "split_evenly": True}
 
 
-# ── 辅助函数 ──────────────────────────────────────────────────────────────
+# -- Helper functions --
 
 
 def get_table_dicts(datatable):
-    """将列表格式的表格转换为字典列表"""
+    """Convert list-format table to list of dictionaries"""
     keys = datatable[0]
     return [dict(zip(keys, row, strict=False)) for row in datatable[1:]]
 
@@ -47,7 +46,7 @@ def given_household_with_members(client, db, household_name):
     user_objects = []
 
     for name in names:
-        # 直接调用导入的助手函数
+        # Directly call imported helper function
         register_user(
             client,
             email=f"{name.lower()}@test.com",
@@ -77,7 +76,7 @@ def given_household_with_members(client, db, household_name):
     target_fixture="context",
 )
 def given_user_authenticated(client, username, context):
-    # 直接调用导入的助手函数获取 Header
+    # Directly call imported helper function to get Header
     context["auth_headers"] = get_auth_header(client, username=username, password="Password123!")
     context["current_user"] = username
     return context
@@ -91,10 +90,10 @@ def given_user_authenticated(client, username, context):
     target_fixture="context",
 )
 def when_set_expense_base_details(username, datatable, context):
-    # 获取表格的第一行
+    # Get the first row of the table
     data = get_table_dicts(datatable)[0]
 
-    # 必填项
+    # Required fields
     context["description"] = data["description"]
     context["amount"] = float(data["amountCAD"])
 
@@ -110,7 +109,7 @@ def when_set_expense_base_details(username, datatable, context):
     target_fixture="context",
 )
 def when_split_manual(client, db, username, datatable, context):
-    # 去掉了参数里的 create_expense
+    # Removed create_expense from parameters
     context["split_evenly"] = False
     context["manual_shares"] = []
 
@@ -139,7 +138,7 @@ def when_split_manual(client, db, username, datatable, context):
         "manual_shares": context["manual_shares"],
     }
 
-    # 直接使用导入的 API 助手
+    # Directly use imported API helper
     context["response"] = api_create_expense(client, context["auth_headers"], payload)
     return context
 
@@ -203,15 +202,15 @@ def when_assign_to_self(client, username, context):
     )
 )
 def then_verify_full_expense_attributes(db, context, username, h_name, amount, desc, cat, status):
-    # 1. 基础响应检查
+    # 1. Basic response check
     assert context["response"].status_code == 201
     assert context["response"].json().get("detail") == "success"
 
-    # 2. 准备对比数据
+    # 2. Prepare comparison data
     user = db.query(User).filter(User.username == username).first()
     household = db.query(Household).filter(Household.name == h_name).first()
 
-    # 3. 从数据库抓取记录
+    # 3. Fetch records from database
     expense = (
         db.query(Expense)
         .filter(Expense.creator_id == user.id, Expense.household_id == household.id)
@@ -221,12 +220,12 @@ def then_verify_full_expense_attributes(db, context, username, h_name, amount, d
 
     assert expense is not None, "Expense record not found in database"
 
-    # --- 开始全属性校验 ---
+    # --- Begin full attribute verification ---
 
-    # A. 金额校验
+    # A. Amount verification
     assert abs(expense.amount - float(amount)) == 0
 
-    # B. 描述校验
+    # B. Description verification
     assert expense.description == desc
 
     # C. Category check (handle None: Gherkin "None" means DB NULL)
@@ -235,11 +234,11 @@ def then_verify_full_expense_attributes(db, context, username, h_name, amount, d
         f"Expected category {expected_category}, but got {expense.category}"
     )
 
-    # D. 状态校验
+    # D. Status verification
     expected_status = ExpenseStatus[status.upper()]
     assert expense.status == expected_status
 
-    # 存入上下文供后续 ExpenseShare 校验使用
+    # Store in context for subsequent ExpenseShare verification
     context["last_expense"] = expense
 
 
