@@ -45,6 +45,27 @@ def get_current_user_active_household_members(
     }
 
 
+@router.get("/me", response_model=HouseholdSchema)
+def get_my_household(
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user),
+):
+    """Return the current user's active household."""
+    membership = (
+        db.query(HouseholdMember)
+        .filter(
+            HouseholdMember.user_id == current_user.id,
+            HouseholdMember.left_at.is_(None),
+        )
+        .first()
+    )
+    if not membership:
+        raise HTTPException(status_code=404, detail="No active household found")
+
+    household = db.query(Household).filter(Household.id == membership.household_id).first()
+    return household
+
+
 @router.post("/", response_model=HouseholdSchema, status_code=status.HTTP_201_CREATED)
 def create_household(
     household_in: HouseholdCreate,

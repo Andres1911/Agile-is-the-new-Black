@@ -167,17 +167,19 @@ class ApiService {
   }
 
   // Household endpoints
-  Future<List<dynamic>> getHouseholds() async {
+  Future<Map<String, dynamic>?> getMyHousehold() async {
     await _loadToken();
     final response = await http.get(
-      Uri.parse('$baseUrl/households/'),
+      Uri.parse('$baseUrl/households/me'),
       headers: _getHeaders(),
     );
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
+    } else if (response.statusCode == 404) {
+      return null;
     } else {
-      throw Exception('Failed to get households: ${response.body}');
+      throw Exception('Failed to get household: ${response.body}');
     }
   }
 
@@ -192,7 +194,8 @@ class ApiService {
     if (response.statusCode == 201) {
       return jsonDecode(response.body);
     } else {
-      throw Exception('Failed to create household: ${response.body}');
+      final error = jsonDecode(response.body);
+      throw Exception(error['detail'] ?? 'Failed to create household');
     }
   }
 
