@@ -17,6 +17,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Expense> _expenses = [];
   Household? _household;
   bool _isLoading = false;
+  String? _errorMessage;
   int _selectedIndex = 0;
 
   @override
@@ -28,10 +29,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
+      _errorMessage = null;
     });
 
     Household? loadedHousehold;
     List<Expense> loadedExpenses = [];
+    String? error;
 
     try {
       final data = await _apiService.getMyHousehold();
@@ -43,16 +46,32 @@ class _HomeScreenState extends State<HomeScreen> {
               await _apiService.getHouseholdExpenses(loadedHousehold.id);
           loadedExpenses =
               expensesData.map((e) => Expense.fromJson(e)).toList();
-        } catch (_) {}
+        } catch (e) {
+          debugPrint('Failed to load expenses: $e');
+          error = 'Failed to load expenses. Please try again.';
+        }
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Failed to load household data: $e');
+      error = 'Failed to load data. Please try again.';
+    }
 
     if (mounted) {
       setState(() {
         _household = loadedHousehold;
         _expenses = loadedExpenses;
         _isLoading = false;
+        _errorMessage = error;
       });
+      if (error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error),
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(label: 'Retry', onPressed: _loadData),
+          ),
+        );
+      }
     }
   }
 
