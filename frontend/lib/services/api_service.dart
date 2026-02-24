@@ -197,8 +197,33 @@ class ApiService {
       try {
         final error = jsonDecode(response.body);
         String message = 'Failed to create household';
-        if (error is Map<String, dynamic> && error['detail'] is String) {
-          message = error['detail'] as String;
+
+        // Handle common FastAPI error formats
+        if (error is Map<String, dynamic>) {
+          final detail = error['detail'];
+          if (detail is String && detail.isNotEmpty) {
+            message = detail;
+          } else if (detail is List && detail.isNotEmpty) {
+            final first = detail.first;
+            if (first is Map<String, dynamic> && first['msg'] is String && (first['msg'] as String).isNotEmpty) {
+              message = first['msg'] as String;
+            } else {
+              // Fall back to a serialized representation of the detail list
+              message = jsonEncode(detail);
+            }
+          }
+        } else if (error is List && error.isNotEmpty) {
+          final first = error.first;
+          if (first is Map<String, dynamic> && first['msg'] is String && (first['msg'] as String).isNotEmpty) {
+            message = first['msg'] as String;
+          } else {
+            message = jsonEncode(error);
+          }
+        }
+
+        // As a last resort, include the raw response body if available
+        if (message == 'Failed to create household' && response.body.isNotEmpty) {
+          message = 'Failed to create household: ${response.body}';
         }
         throw Exception(message);
       } on FormatException {
