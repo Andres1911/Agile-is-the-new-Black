@@ -61,7 +61,7 @@ def _setup_household_and_expense(client, db):
 class TestRespondExpenseShareSuccess:
     """Normal and alternative flows: accept/decline expense share."""
 
-    def test_participant_accepts_expense_share(self, client, db):
+    def test_ID011_participant_accepts_expense_share(self, client, db):
         expense_id, _, headers_bob, _ = _setup_household_and_expense(client, db)
 
         resp = client.post(
@@ -85,7 +85,7 @@ class TestRespondExpenseShareSuccess:
         # Cara is still pending, so expense should remain pending
         assert expense.status == ExpenseStatus.PENDING
 
-    def test_participant_declines_expense_share_and_expense_becomes_disputed(self, client, db):
+    def test_ID011_participant_declines_expense_share_and_expense_becomes_disputed(self, client, db):
         expense_id, _, headers_bob, _ = _setup_household_and_expense(client, db)
 
         resp = client.post(
@@ -108,7 +108,7 @@ class TestRespondExpenseShareSuccess:
         expense = db.query(Expense).filter(Expense.id == expense_id).first()
         assert expense.status == ExpenseStatus.DISPUTED
 
-    def test_all_participants_accept_and_expense_becomes_finalized(self, client, db):
+    def test_ID011_all_participants_accept_and_expense_becomes_finalized(self, client, db):
         expense_id, _, headers_bob, headers_cara = _setup_household_and_expense(client, db)
 
         resp_bob = client.post(
@@ -137,7 +137,7 @@ class TestRespondExpenseShareSuccess:
 class TestRespondExpenseShareErrors:
     """Error flows: non-participant, invalid decision, missing expense, no household."""
 
-    def test_non_participant_rejected(self, client, db):
+    def test_ID011_non_participant_rejected(self, client, db):
         """Cara has no share in an expense that only has Bob; Cara cannot respond."""
         from app.models.models import Household, HouseholdMember
 
@@ -189,7 +189,7 @@ class TestRespondExpenseShareErrors:
         assert resp.status_code == 400
         assert "do not have an expense share" in resp.json()["detail"].lower()
 
-    def test_expense_not_found(self, client, db):
+    def test_ID011_expense_not_found(self, client, db):
         expense_id, _, headers_bob, _ = _setup_household_and_expense(client, db)
 
         # Use a non-existing expense id
@@ -201,7 +201,7 @@ class TestRespondExpenseShareErrors:
         assert resp.status_code == 404
         assert resp.json()["detail"] == "Expense not found"
 
-    def test_user_not_in_household_rejected(self, client, db):
+    def test_ID011_user_not_in_household_rejected(self, client, db):
         expense_id, _, _, _ = _setup_household_and_expense(client, db)
 
         register(
@@ -221,7 +221,7 @@ class TestRespondExpenseShareErrors:
         assert resp.status_code == 400
         assert "not currently in any household" in resp.json()["detail"].lower()
 
-    def test_invalid_decision_rejected_by_schema(self, client, db):
+    def test_ID011_invalid_decision_rejected_by_schema(self, client, db):
         expense_id, _, headers_bob, _ = _setup_household_and_expense(client, db)
 
         resp = client.post(
