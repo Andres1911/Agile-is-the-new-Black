@@ -8,7 +8,7 @@ Feature: Create a household
     Given a user with username "<UserName>" already exists in the system
     And the user "<UserName>" is logged in
 
-  Scenario Outline: Create a New Household (Normal Flow)
+  Scenario Outline: ID003 create_household_success
     Given the user "<UserName>" hasn't been assigned a household
     And a household named "<Name>" does not exist
     When requesting the addition of household "<Name>"
@@ -23,7 +23,7 @@ Feature: Create a household
       | Alice    | MapleHouse   |
       | Bob      | DowntownLoft |
 
-  Scenario Outline: Create a New Household with Address (Alternative Flow)
+  Scenario Outline: ID003 create_household_with_address_success
     Given the user "<UserName>" hasn't been assigned a household
     And a household named "<Name>" does not exist
     When requesting the addition of household "<Name>" with address "<Address>"
@@ -38,7 +38,7 @@ Feature: Create a household
       | Charlie  | SunsetVilla | 123 Maple St, NY |
       | David    | GreenGarden | 456 Oak Ave, LA  |
 
-  Scenario Outline: Attempt to Create a Household with a Duplicate Name (Error Flow)
+  Scenario Outline: ID003 reject_create_household_duplicate_name
     Given a household named "<HouseholdName>" already exists in the system
     And the user "<UserName>" is not currently living in any household
     When requesting the addition of household "<HouseholdName>"
@@ -50,7 +50,7 @@ Feature: Create a household
       | Alice    | MapleHouse    |
       | Bob      | Downtown      |
 
-  Scenario Outline: Attempt to Create a New Household While Already Lived In (Error Flow)
+  Scenario Outline: ID003 reject_create_household_already_in_another
     Given the user "<UserName>" is already living in the household "<CurrentHome>"
     When requesting the addition of household "<NewHome>"
     Then the message "User is already registered as living in another household" is issued

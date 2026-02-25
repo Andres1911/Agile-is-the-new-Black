@@ -5,7 +5,7 @@ Feature: User Login
   So that I have flexible yet secure access to my account and household data
 
   # --- Normal Flow ---
-  Scenario Outline: Login with Email (Normal Flow)
+  Scenario Outline: ID002 login_with_email_success
     Given a user with email "<Email>" and password "<Password>" already exists in the system
     When the user attempts to log in with email "<Email>" and password "<Password>"
     Then the message "Success" is issued
@@ -18,7 +18,7 @@ Feature: User Login
       | bob@example.com   | Secure456 |
 
   # --- Alternative Flow ---
-  Scenario Outline: Login with Username (Alternative Flow)
+  Scenario Outline: ID002 login_with_username_success
     Given a user with username "<UserName>" and password "<Password>" already exists in the system
     When the user attempts to log in with username "<UserName>" and password "<Password>"
     Then the message "Success" is issued
@@ -31,7 +31,7 @@ Feature: User Login
       | Bob      | Secure456 |
 
   # --- Error Flow ---
-  Scenario Outline: Login Failure with Correct Username but Incorrect Password (Error Flow)
+  Scenario Outline: ID002 reject_login_incorrect_password
     Given a user with username "<UserName>" already exists in the system
     When the user attempts to log in with username "<UserName>" and an incorrect password "<WrongPassword>"
     Then the error message "Invalid username or password" is returned
@@ -44,7 +44,7 @@ Feature: User Login
       | Bob      | Admin888      |
 
   # --- Error Flow ---
-  Scenario Outline: Login Failure with Non-existent Email (Error Flow)
+  Scenario Outline: ID002 reject_login_nonexistent_email
     Given the system has no user with email "<InvalidEmail>"
     When the user attempts to log in with email "<InvalidEmail>" and password "<AnyPassword>"
     Then the error message "Invalid email or password" is returned

@@ -12,7 +12,7 @@ Feature: Create and split an expense
       | Cara   |
 
   # Normal Flow: Member creates an expense and splits it manually
-  Scenario: Member creates an expense and splits it manually
+  Scenario: ID007 create_expense_manual_split_success
     Given user "Alice" is authenticated as a household member
     When "Alice" specifies an expense with the following details
       | description | amountCAD |
@@ -28,7 +28,7 @@ Feature: Create and split an expense
       | Cara  | 40.00       | 0.00        | False   | PENDING     |
 
   # Normal Flow: Member creates an expense and splits it equally without including themselves
-  Scenario: Member creates an expense and splits it equally without including themselves
+  Scenario: ID007 create_expense_equal_split_without_self_success
     Given user "Alice" is authenticated as a household member
     When "Alice" specifies an expense with the following details
       | description  | amountCAD | category    |
@@ -41,7 +41,7 @@ Feature: Create and split an expense
       | Cara  | 45.00       | 0.00        | False   | PENDING     |
 
   # Alternative Flow: Member creates an expense and splits it equally including themselves
-  Scenario: Member creates an expense and splits it equally including themselves
+  Scenario: ID007 create_expense_equal_split_with_self_success
     Given user "Alice" is authenticated as a household member
     When "Alice" specifies an expense with the following details
       | description | amountCAD | category    |
@@ -55,7 +55,7 @@ Feature: Create and split an expense
       | Cara  | 10.00       | 0.00        | False   | PENDING     |
 
   # Error Flow: Member attempts to create expense where split amounts do not equal total
-  Scenario: Member attempts to create expense where split amounts do not equal total
+  Scenario: ID007 reject_create_expense_split_mismatch
     Given user "Alice" is authenticated as a household member
     When "Alice" specifies an expense with the following details
       | description | amountCAD | category    |
@@ -68,7 +68,7 @@ Feature: Create and split an expense
     And the system displays error message "Cannot create expense: Split amounts 50.00 CAD do not equal expense total 60.00 CAD"
 
   # Error Flow: Member attempts to create expense with negative amount
-  Scenario: Member attempts to create expense with negative amount
+  Scenario: ID007 reject_create_expense_negative_amount
     Given user "Alice" is authenticated as a household member
     When "Alice" specifies an expense with the following details
       | description | amountCAD | category    |

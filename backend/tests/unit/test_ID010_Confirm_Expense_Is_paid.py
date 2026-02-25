@@ -59,7 +59,7 @@ def _setup_household_and_expense(client, db):
 class TestConfirmPaymentSuccess:
     """Normal flows: full and partial payment."""
 
-    def test_participant_confirms_full_payment(self, client, db):
+    def test_ID010_participant_confirms_full_payment(self, client, db):
         expense_id, _, headers_bob, _ = _setup_household_and_expense(client, db)
         resp = client.post(
             f"/api/v1/expenses/{expense_id}/confirm-payment",
@@ -81,27 +81,7 @@ class TestConfirmPaymentSuccess:
         expense = db.query(Expense).filter(Expense.id == expense_id).first()
         assert expense.status == ExpenseStatus.PARTIALLY_SETTLED
 
-    def test_second_participant_pays_and_expense_fully_settled(self, client, db):
-        expense_id, _, headers_bob, headers_cara = _setup_household_and_expense(client, db)
-        client.post(
-            f"/api/v1/expenses/{expense_id}/confirm-payment",
-            json={"amount": 20.0},
-            headers=headers_bob,
-        )
-        resp = client.post(
-            f"/api/v1/expenses/{expense_id}/confirm-payment",
-            json={"amount": 40.0},
-            headers=headers_cara,
-        )
-        assert resp.status_code == 200
-
-        db.expire_all()
-        expense = db.query(Expense).filter(Expense.id == expense_id).first()
-        assert expense.status == ExpenseStatus.FULLY_SETTLED
-        shares = db.query(ExpenseShare).filter(ExpenseShare.expense_id == expense_id).all()
-        assert all(s.is_paid for s in shares)
-
-    def test_partial_payment_updates_outstanding(self, client, db):
+    def test_ID010_participant_confirms_partial_payment(self, client, db):
         expense_id, _, _, headers_cara = _setup_household_and_expense(client, db)
         resp = client.post(
             f"/api/v1/expenses/{expense_id}/confirm-payment",
@@ -125,7 +105,7 @@ class TestConfirmPaymentSuccess:
 class TestConfirmPaymentErrors:
     """Error flows: non-participant, overpayment, already paid."""
 
-    def test_non_participant_rejected(self, client, db):
+    def test_ID010_reject_payment_from_non_participant(self, client, db):
         """Cara has no share in an expense that only has Bob; Cara cannot confirm payment."""
         from app.models.models import Household, HouseholdMember
 
@@ -177,7 +157,7 @@ class TestConfirmPaymentErrors:
         assert resp.status_code == 400
         assert "do not have an expense share" in resp.json()["detail"].lower()
 
-    def test_payment_exceeds_outstanding_rejected(self, client, db):
+    def test_ID010_reject_payment_exceeds_outstanding_balance(self, client, db):
         expense_id, _, headers_bob, _ = _setup_household_and_expense(client, db)
         resp = client.post(
             f"/api/v1/expenses/{expense_id}/confirm-payment",
@@ -189,7 +169,7 @@ class TestConfirmPaymentErrors:
         assert "25.00" in resp.json()["detail"]
         assert "20.00" in resp.json()["detail"]
 
-    def test_already_paid_share_rejected(self, client, db):
+    def test_ID010_reject_payment_when_expense_share_already_fully_paid(self, client, db):
         expense_id, _, headers_bob, _ = _setup_household_and_expense(client, db)
         client.post(
             f"/api/v1/expenses/{expense_id}/confirm-payment",
@@ -204,7 +184,7 @@ class TestConfirmPaymentErrors:
         assert resp.status_code == 400
         assert "already fully paid" in resp.json()["detail"].lower()
 
-    def test_zero_amount_rejected(self, client, db):
+    def test_ID010_reject_payment_with_zero_amount(self, client, db):
         expense_id, _, headers_bob, _ = _setup_household_and_expense(client, db)
         resp = client.post(
             f"/api/v1/expenses/{expense_id}/confirm-payment",

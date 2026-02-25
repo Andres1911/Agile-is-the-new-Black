@@ -14,7 +14,7 @@ Feature: Join A Household
  # --- Normal Flow ---
 
 
-  Scenario Outline: Guest joins a household with correct credentials (Normal Flow)
+  Scenario Outline: ID005 join_household_with_valid_code_success
     Given the user "<UserName>" does not currently belong to any household
     And a household named "<HouseholdName>" exists in the system
     And the household "<HouseholdName>" has the invite code "<InviteCode>"
@@ -33,7 +33,7 @@ Feature: Join A Household
  # --- Error Flows ---
 
 
-  Scenario Outline: Attempt to join with an incorrect invite code (Error Flow)
+  Scenario Outline: ID005 reject_join_household_invalid_code
     Given the user "<UserName>" does not currently belong to any household
     And a household named "<HouseholdName>" exists in the system
     And the household "<HouseholdName>" has a code that is NOT "<WrongCode>"
@@ -47,7 +47,7 @@ Feature: Join A Household
       | Charlie  | The North Star | WRONG666     |
 
 
-  Scenario Outline: Attempt to join a non-existent household (Error Flow)
+  Scenario Outline: ID005 reject_join_nonexistent_household
     Given the user "<UserName>" does not currently belong to any household
     And a household named "<FakeHouse>" does not exist in the system
     When the user requests to join household "<FakeHouse>" with any invite code "CODE123"
@@ -61,7 +61,7 @@ Feature: Join A Household
       | Dave     | MarsColony     |
 
 
-  Scenario Outline: Already-in-household user attempts to join another (Error Flow)
+  Scenario Outline: ID005 reject_join_household_already_in_another
     Given the user "<UserName>" is already living in the household "<CurrentHome>"
     And another household named "<TargetHouse>" exists with the invite code "<ValidCode>"
     When the user requests to join household "<TargetHouse>" with invite code "<ValidCode>"

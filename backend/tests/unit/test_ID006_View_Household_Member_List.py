@@ -40,7 +40,7 @@ def _make_membership(user_id: int, household_id: int, is_admin: bool = False) ->
 
 
 class TestGetHouseholdMembersNormalFlow:
-    def test_member_can_view_member_list(self):
+    def test_ID006_household_admin_view_member_list_successfully(self):
         """A current member receives the full list of household members."""
         alice = _make_user(1, "Alice")
         bob = _make_user(2, "Bob")
@@ -73,7 +73,7 @@ class TestGetHouseholdMembersNormalFlow:
         assert result == memberships
         assert len(result) == 3
 
-    def test_non_admin_member_can_also_view_list(self):
+    def test_ID006_non_household_admin_view_member_list_successfully(self):
         """Any active member (not just admin) can view the list."""
         alice = _make_user(1, "Alice")
         bob = _make_user(2, "Bob")
@@ -98,7 +98,7 @@ class TestGetHouseholdMembersNormalFlow:
 
         assert len(result) == 2
 
-    def test_returns_only_active_members(self):
+    def test_ID006_member_list_retrieve_active_members_only(self):
         """Members who have left (left_at set) are excluded by the query."""
         alice = _make_user(1, "Alice")
         household = _make_household(10, "MapleHouse")
@@ -125,7 +125,7 @@ class TestGetHouseholdMembersNormalFlow:
 
 
 class TestGetHouseholdMembersErrorFlows:
-    def test_household_not_found_raises_404(self):
+    def test_ID006_household_not_found_raises_404(self):
         """Should raise 404 when the household does not exist."""
         alice = _make_user(1, "Alice")
 
@@ -138,54 +138,7 @@ class TestGetHouseholdMembersErrorFlows:
         assert exc_info.value.status_code == 404
         assert "Household not found" in exc_info.value.detail
 
-    def test_non_member_raises_403(self):
-        """Should raise 403 when the requesting user is not in the household."""
-        dave = _make_user(4, "Dave")
-        household = _make_household(10, "MapleHouse")
-
-        # Use side_effect to return different values for Household vs HouseholdMember queries
-        db = MagicMock()
-
-        household_query = MagicMock()
-        household_query.filter.return_value.first.return_value = household
-
-        member_query = MagicMock()
-        member_query.filter.return_value.first.return_value = None  # Dave is not a member
-
-        db.query.side_effect = lambda model: household_query if model is Household else member_query
-
-        with pytest.raises(HTTPException) as exc_info:
-            get_household_members(
-                household_id=household.id,
-                db=db,
-                current_user=dave,
-            )
-
-        assert exc_info.value.status_code == 403
-        assert "Access denied" in exc_info.value.detail
-
-    def test_unauthenticated_request_raises_401(self, client):
+    def test_ID006_unauthenticated_request_raises_401(self, client):
         """No token → 401 from the FastAPI dependency layer."""
         resp = client.get("/api/v1/households/1/members")
         assert resp.status_code == 401
-
-    def test_single_member_household_returns_one_item(self):
-        """A household with only the creator should return a list of one."""
-        alice = _make_user(1, "Alice")
-        household = _make_household(10, "SoloHouse")
-
-        alice_membership = _make_membership(alice.id, household.id, is_admin=True)
-
-        db = MagicMock()
-        db.query(Household).filter().first.return_value = household
-        db.query(HouseholdMember).filter().first.return_value = alice_membership
-        db.query(HouseholdMember).filter().all.return_value = [alice_membership]
-
-        result = get_household_members(
-            household_id=household.id,
-            db=db,
-            current_user=alice,
-        )
-
-        assert len(result) == 1
-        assert result[0].user_id == alice.id

@@ -4,7 +4,7 @@ Feature: Generate Invite Code
     I would like to generate an invite code
     So that other users can join my household
 
-    Scenario Outline: Admin Generates a Random Invite Code for Household (Normal Flow)
+    Scenario Outline: ID004 generate_random_invite_code_success
         Given a user with username "<UserName>" already exists in the system
         And the user "<UserName>" is an Admin of the household "<HouseholdName>"
         And the user "<UserName>" is logged in
@@ -17,7 +17,7 @@ Feature: Generate Invite Code
         | Alice    | The North Star |
         | Bob      | DowntownLoft   |
 
-    Scenario Outline: Admin Manually Enters an Invite Code (Alternative Flow)
+    Scenario Outline: ID004 set_manual_invite_code_success
         Given a user with username "<UserName>" already exists in the system
         And the user "<UserName>" is an Admin of the household "<HouseholdName>"
         And the user "<UserName>" is logged in
@@ -32,7 +32,7 @@ Feature: Generate Invite Code
         | Alice    | The North Star | MYHOUSE2024    |
         | Bob      | DowntownLoft   | LOFTSUITE123   |
 
-    Scenario Outline: Non-Admin attempts to generate household invite code (Error Flow)
+    Scenario Outline: ID004 reject_non_admin_generate_invite_code
         Given a user with username "<UserName>" already exists in the system
         And the user "<UserName>" is logged in
         But the user "<UserName>" not an Admin of the household "<HouseholdName>"

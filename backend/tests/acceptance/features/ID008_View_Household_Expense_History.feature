@@ -14,13 +14,13 @@ Feature: View household expense history
       | Internet    | 60.00  | Alice  |
     And the user "Alice" is logged in
 
-  Scenario: Successfully view expense history (Normal Flow)
+  Scenario: ID008 retrieve_expense_history_chronological_order
     When "Alice" requests the expense history for "MapleHouse"
     Then a list of 2 expenses should be returned
     And the first expense should be "Internet" with amount 60.00
     And the second expense should be "Groceries" with amount 50.00
 
-  Scenario: View history for a household with no expenses (Empty State)
+  Scenario: ID008 retrieve_empty_expense_history
     Given a household named "EmptyHome" exists in the system
     And "Alice" is a member of "EmptyHome"
     And "EmptyHome" has no recorded expenses
@@ -28,7 +28,7 @@ Feature: View household expense history
     Then an empty list should be returned
     And the message "No expenses found" is issued
 
-  Scenario: Unauthorized user attempts to view history (Error Flow)
+  Scenario: ID008 reject_expense_history_non_member
     Given a user with username "Charlie" exists in the system
     And "Charlie" is logged in
     And "Charlie" is not a member of "MapleHouse"

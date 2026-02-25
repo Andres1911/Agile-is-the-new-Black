@@ -5,7 +5,7 @@ from ..conftest import TestingSessionLocal, login, register
 
 
 class TestCreateAndSplitExpenseFailCases:
-    def test_member_without_household_create_expense(self, client):
+    def test_ID007_member_without_household_attempt_to_create_expense(self, client):
         """
         1. Register and login a real user.
         2. Ensure no HouseholdMember records for this user in database.
@@ -39,7 +39,7 @@ class TestCreateAndSplitExpenseFailCases:
         assert resp.status_code == 400
         assert "not currently in any household" in resp.json()["detail"].lower()
 
-    def test_create_expense_with_no_payer(self, client):
+    def test_ID007_member_attempts_to_create_expense_with_no_payer(self, client):
         """
         Test scenario: Alice is in a household, but she's the only member.
         She tries to create an expense split that doesn't include herself (include_creator=False).
@@ -78,7 +78,7 @@ class TestCreateAndSplitExpenseFailCases:
         assert resp.status_code == 400
         assert "no other active members" in resp.json()["detail"].lower()
 
-    def test_create_expense_share_for_non_household_member(self, client):
+    def test_ID007_member_attempts_to_create_expense_share_for_non_household_member(self, client):
         """
         Scenario: Alice (Household A) tries to assign expense share to Stranger (not in Household A).
         Expected: 400 error indicating user is not an active member of the household.
@@ -120,7 +120,7 @@ class TestCreateAndSplitExpenseFailCases:
         assert f"User {stranger.id} is not an active member" in resp.json()["detail"]
         db.close()
 
-    def test_create_expense_share_with_zero_amount(self, client):
+    def test_ID007_member_attempts_to_create_expense_share_with_zero_amount(self, client):
         """
         Scenario: Alice assigns Bob 0 or negative amount in split.
         Expected: 400 error indicating share amount must be greater than zero.
@@ -164,7 +164,7 @@ class TestCreateAndSplitExpenseFailCases:
 
 
 class TestCreateAndSplitExpenseSuccessCases:
-    def test_equal_split_handles_floating_point_residue_correctly(self, client):
+    def test_ID007_equal_split_handles_floating_point_residue_correctly(self, client):
         """
         Scenario: 5 people split 100.01 equally.
         """

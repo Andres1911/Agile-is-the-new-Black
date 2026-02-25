@@ -13,7 +13,7 @@ Feature: View Household Member List
 
   # Normal Flow
 
-  Scenario: Member views the full list of household members (Normal Flow)
+  Scenario: ID006 retrieve_household_members_admin_success
     Given user "Alice" is authenticated as a household member
     When "Alice" requests the member list for household "MapleHouse"
     Then the system returns the following members for "MapleHouse"
@@ -25,7 +25,7 @@ Feature: View Household Member List
 
   # Alternative Flow 
 
-  Scenario Outline: Any household member can view the member list (Alternative Flow)
+  Scenario Outline: ID006 retrieve_household_members_non_admin_success
     Given user "<User>" is authenticated as a household member
     When "<User>" requests the member list for household "MapleHouse"
     Then the system returns the following members for "MapleHouse"
@@ -42,20 +42,20 @@ Feature: View Household Member List
 
   # Error Flows
 
-  Scenario: User not in the household attempts to view the member list (Error Flow)
+  Scenario: ID006 reject_view_members_not_household_member
     Given user "Dave" is authenticated and exists in the system
     And user "Dave" is not a member of household "MapleHouse"
     When "Dave" requests the member list for household "MapleHouse"
     Then the system denies the request
     And the error message "Access denied: You are not a member of this household" is returned
 
-  Scenario: Unauthenticated user attempts to view the member list (Error Flow)
+  Scenario: ID006 reject_view_members_unauthenticated
     Given no user is authenticated
     When an unauthenticated request is made to view the member list for household "MapleHouse"
     Then the system denies the request
     And the error message "Not authenticated" is returned
 
-  Scenario: Member requests the member list for a non-existent household (Error Flow)
+  Scenario: ID006 reject_view_members_nonexistent_household
     Given user "Alice" is authenticated as a household member
     And no household with name "GhostHouse" exists in the system
     When "Alice" requests the member list for household "GhostHouse"
