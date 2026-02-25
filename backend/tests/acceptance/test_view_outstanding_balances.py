@@ -7,8 +7,7 @@ from app.models.models import Expense, ExpenseShare, Household, HouseholdMember,
 from tests.conftest import login
 from tests.conftest import register as register_user
 
-# Link the featur
-pytestmark = pytest.mark.xfail(reason="Balances endpoint not implemented yet", strict=False)
+
 
 scenarios("features/ID009_View_Outstanding_Expenses.feature")
 
