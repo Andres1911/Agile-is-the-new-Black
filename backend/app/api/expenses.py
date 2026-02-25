@@ -12,11 +12,8 @@ from app.models.models import (
     User,
     VoteStatus,
 )
-from app.schemas.schemas import (
-    ConfirmPaymentRequest,
-    ExpenseCreate,
-    RespondExpenseShareRequest,
-)
+from app.schemas.schemas import ConfirmPaymentRequest, ExpenseCreate, OutstandingExpense, RespondExpenseShareRequest
+
 
 router = APIRouter()
 
