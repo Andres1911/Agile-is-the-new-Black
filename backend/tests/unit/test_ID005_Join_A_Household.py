@@ -6,7 +6,7 @@ from tests.conftest import TestingSessionLocal, login, register
 class TestJoinHouseholdFlows:
     # --- Normal Flow ---
 
-    def test_join_household_success(self, client):
+    def test_ID005_User_joins_household_successfully(self, client):
         """Scenario: Guest joins a household with correct credentials."""
         # Setup
         register(client, username="Charlie", email="charlie@test.com")
@@ -47,7 +47,7 @@ class TestJoinHouseholdFlows:
 
     # --- Error Flows ---
 
-    def test_join_with_incorrect_invite_code(self, client):
+    def test_ID005_User_attempts_to_join_household_with_incorrect_invite_code(self, client):
         """Scenario: Attempt to join with an incorrect invite code."""
         register(client, username="Charlie_Fail", email="cfail@test.com")
         auth_resp = login(client, username="Charlie_Fail")
@@ -65,7 +65,7 @@ class TestJoinHouseholdFlows:
         assert resp.status_code == 400
         assert "invalid invite code" in resp.json()["detail"].lower()
 
-    def test_already_in_household_prevented(self, client):
+    def test_ID005_User_living_in_household_attempts_to_join_another_household(self, client):
         """Scenario: Already-in-household user attempts to join another."""
         register(client, username="Charlie_Busy", email="busy@test.com")
         auth_resp = login(client, username="Charlie_Busy")

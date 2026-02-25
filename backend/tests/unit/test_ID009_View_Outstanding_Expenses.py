@@ -58,7 +58,7 @@ def _setup_household_and_expense(client, db):
 
 
 class TestOutstandingExpenses:
-    def test_lists_unpaid_shares_for_current_user(self, client, db):
+    def test_ID009_get_outstanding_expense_lists_unpaid_shares_for_current_user(self, client, db):
         expense_id, _, headers_bob = _setup_household_and_expense(client, db)
 
         resp = client.get("/api/v1/expenses/outstanding", headers=headers_bob)
@@ -78,7 +78,7 @@ class TestOutstandingExpenses:
         assert item["paid_amount"] == 0.0
         assert item["outstanding_amount"] == 20.0
 
-    def test_does_not_return_fully_paid_shares(self, client, db):
+    def test_ID009_get_outsttanding_expense_does_not_return_fully_paid_shares(self, client, db):
         expense_id, _, headers_bob = _setup_household_and_expense(client, db)
 
         pay = client.post(
