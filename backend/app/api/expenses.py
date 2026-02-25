@@ -12,7 +12,12 @@ from app.models.models import (
     User,
     VoteStatus,
 )
-from app.schemas.schemas import ConfirmPaymentRequest, ExpenseCreate, OutstandingExpense
+from app.schemas.schemas import (
+    ConfirmPaymentRequest,
+    ExpenseCreate,
+    OutstandingExpense,
+    RespondExpenseShareRequest,
+)
 
 router = APIRouter()
 
@@ -202,6 +207,70 @@ def create_and_split(
         raise HTTPException(status_code=500, detail="Database error during creation") from None
 
     return {"detail": "success"}
+
+
+@router.post("/{expense_id}/respond-share", status_code=200)
+def respond_expense_share(
+    expense_id: int,
+    body: RespondExpenseShareRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Allow the current user to accept or decline their expense share."""
+
+    membership = (
+        db.query(HouseholdMember)
+        .filter(
+            HouseholdMember.user_id == current_user.id,
+            HouseholdMember.left_at.is_(None),
+        )
+        .first()
+    )
+    if not membership:
+        raise HTTPException(
+            status_code=400,
+            detail="User is not currently in any household",
+        )
+
+    expense = db.query(Expense).filter(Expense.id == expense_id).first()
+    if not expense or expense.household_id != membership.household_id:
+        raise HTTPException(
+            status_code=404,
+            detail="Expense not found",
+        )
+
+    share = (
+        db.query(ExpenseShare)
+        .filter(
+            ExpenseShare.expense_id == expense_id,
+            ExpenseShare.user_id == current_user.id,
+        )
+        .first()
+    )
+    if not share:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot respond: You do not have an expense share for this expense",
+        )
+
+    if body.decision == "accept":
+        share.vote_status = VoteStatus.ACCEPTED
+        response_message = "Expense share accepted"
+    else:  # "decline"
+        share.vote_status = VoteStatus.REJECTED
+        response_message = "Expense share declined"
+
+    all_shares = db.query(ExpenseShare).filter(ExpenseShare.expense_id == expense_id).all()
+
+    if any(s.vote_status == VoteStatus.REJECTED for s in all_shares):
+        expense.status = ExpenseStatus.DISPUTED
+    elif all(s.vote_status == VoteStatus.ACCEPTED for s in all_shares):
+        expense.status = ExpenseStatus.FINALIZED
+    else:
+        expense.status = ExpenseStatus.PENDING
+
+    db.commit()
+    return {"detail": response_message}
 
 
 @router.post("/{expense_id}/confirm-payment", status_code=200)
