@@ -12,6 +12,7 @@ pytestmark = pytest.mark.xfail(reason="Balances endpoint not implemented yet", s
 
 scenarios("features/ID009_View_Outstanding_Expenses.feature")
 
+
 @pytest.fixture()
 def context():
     return {}
@@ -80,7 +81,9 @@ def given_household_member(db, username, hh_name, context):
     return context
 
 
-@given(parsers.parse('the following expense shares exist for "{hh_name}"'), target_fixture="context")
+@given(
+    parsers.parse('the following expense shares exist for "{hh_name}"'), target_fixture="context"
+)
 def given_expense_shares(db, hh_name, datatable, context):
     """
     Seed data so the endpoint can compute:
@@ -169,7 +172,9 @@ def given_not_member_any_household(db, username):
 # ── WHEN ────────────────────────────────────────────────────────────────
 
 
-@when(parsers.parse('"{username}" requests her balances using GET "{path}"'), target_fixture="context")
+@when(
+    parsers.parse('"{username}" requests her balances using GET "{path}"'), target_fixture="context"
+)
 @when(parsers.parse('"{username}" requests balances using GET "{path}"'), target_fixture="context")
 def when_get_balances(client, username, path, context):
     # Normalize to /api/v1 like other acceptance tests do
@@ -183,7 +188,11 @@ def when_get_balances(client, username, path, context):
 # ── THEN ────────────────────────────────────────────────────────────────
 
 
-@then(parsers.parse('the household "{hh_name}" should show outstanding owed by "{username}" of {amt:f} CAD'))
+@then(
+    parsers.parse(
+        'the household "{hh_name}" should show outstanding owed by "{username}" of {amt:f} CAD'
+    )
+)
 def then_household_owed_by(context, hh_name, username, amt):
     assert context["response"].status_code == 200
     data = context["response"].json()
@@ -197,7 +206,11 @@ def then_household_owed_by(context, hh_name, username, amt):
     assert abs(float(hh.get("owed_by_me", 0.0)) - amt) < 0.01
 
 
-@then(parsers.parse('the response should include {count:d} outstanding shares where payer is "{username}"'))
+@then(
+    parsers.parse(
+        'the response should include {count:d} outstanding shares where payer is "{username}"'
+    )
+)
 def then_count_payer_shares(context, count, username):
     assert context["response"].status_code == 200
     data = context["response"].json()
@@ -222,7 +235,11 @@ def then_no_paid(context):
     assert all(s.get("is_paid") is False for s in shares), f"Found paid shares: {shares}"
 
 
-@then(parsers.parse('the household "{hh_name}" should show outstanding owed to "{username}" of {amt:f} CAD'))
+@then(
+    parsers.parse(
+        'the household "{hh_name}" should show outstanding owed to "{username}" of {amt:f} CAD'
+    )
+)
 def then_household_owed_to(context, hh_name, username, amt):
     assert context["response"].status_code == 200
     data = context["response"].json()
@@ -234,8 +251,16 @@ def then_household_owed_to(context, hh_name, username, amt):
     assert abs(float(hh.get("owed_to_me", 0.0)) - amt) < 0.01
 
 
-@then(parsers.parse('the response should include {count:d} outstanding share where payee is "{username}"'))
-@then(parsers.parse('the response should include {count:d} outstanding shares where payee is "{username}"'))
+@then(
+    parsers.parse(
+        'the response should include {count:d} outstanding share where payee is "{username}"'
+    )
+)
+@then(
+    parsers.parse(
+        'the response should include {count:d} outstanding shares where payee is "{username}"'
+    )
+)
 def then_count_payee_shares(context, count, username):
     assert context["response"].status_code == 200
     data = context["response"].json()
