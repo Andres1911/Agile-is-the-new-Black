@@ -314,7 +314,7 @@ class ApiService {
     }
 
     final response = await http.post(
-      Uri.parse('$baseUrl/expenses/$expenseId/pay'),
+      Uri.parse('$baseUrl/expenses/$expenseId/confirm-payment'),
       headers: _getHeaders(),
       body: jsonEncode({'amount': amount}),
     );
