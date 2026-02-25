@@ -6,7 +6,7 @@ Feature: Add new user
 
   # --- Normal Flow ---
 
-  Scenario Outline: Add a New User (Normal Flow)
+  Scenario Outline: ID001 Add a New User    (Normal Flow)
     Given the system has no user with email "<Email>"
     And the system has no user with username "<UserName>"
     When the password "<Password>" is valid (at least 8 characters)
@@ -22,7 +22,7 @@ Feature: Add new user
 
   # --- Error Flows ---
 
-  Scenario Outline: Register with Duplicate Username and Invalid Password (Error Flow)
+  Scenario Outline: ID001 Register with Duplicate Username and Invalid Password    (Error Flow)
     Given the system has no user with email "<InputEmail>"
     And a user with username "<InputUserName>" exists
     When the password "<Password>" is invalid (less than 8 characters)
@@ -35,7 +35,7 @@ Feature: Add new user
       | unique@mail.com  | Bob           | 123      |
       | test@example.com | Alice         | abcd     |
 
-  Scenario Outline: Register with Duplicate Email (Error Flow)
+  Scenario Outline: ID001 Register with Duplicate Email    (Error Flow)
     Given a user with email "<InputEmail>" already exists
     And the system has no user with username "<InputUserName>"
     When the password "<Password>" is valid (at least 8 characters)

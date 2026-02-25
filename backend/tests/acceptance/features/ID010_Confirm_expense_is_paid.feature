@@ -19,7 +19,7 @@ Feature: Confirm expense is paid
       | Cara        | 40.00    | 40.00          | Unpaid |
 
   # Normal Flow: Participant confirms full payment of their share
-  Scenario: Participant confirms full payment of their expense share
+  Scenario: ID010 Expense participant confirms full payment of their expense share    (Normal Flow)
     Given user "Bob" is authenticated as a household member
     When "Bob" confirms payment of his expense share for expense "EXP-101" with amount 20.00 CAD
     Then the system records the payment
@@ -32,7 +32,7 @@ Feature: Confirm expense is paid
     And expense "EXP-101" status is "Partially Settled"
 
   # Normal Flow: Full settlement of expense
-  Scenario: Expense becomes fully settled when all participants confirm payment
+  Scenario: ID010 Fully settle expense automatically when all expense participants confirm payment    (Normal Flow)
     Given user "Cara" is authenticated as a household member
     And "Bob" has already confirmed payment of his expense share for expense "EXP-101"
     And expense "EXP-101" has the following expense shares
@@ -50,7 +50,7 @@ Feature: Confirm expense is paid
     And expense "EXP-101" status is "Fully Settled"
 
   # Alternative Flow: Partial payment
-  Scenario: Participant confirms partial payment of their expense share
+  Scenario: ID010 Expense participant confirms partial payment of their expense share    (Alternative Flow)
     Given user "Cara" is authenticated as a household member
     When "Cara" confirms payment of her expense share for expense "EXP-101" with amount 15.00 CAD
     Then the system records the payment
@@ -63,7 +63,7 @@ Feature: Confirm expense is paid
     And expense "EXP-101" status is "Partially Settled"
 
   # Error Flow: Non-participant attempts to confirm payment
-  Scenario: Non-participant attempts to confirm payment for an expense they have no share in
+  Scenario: ID010 Non-participant attempts to confirm payment for an expense they have no share in    (Error Flow)
     Given user "Alice" has created the following expense
       | expenseId | description | amountCAD | date       |
       | EXP-102   | Movie night | 30.00     | 2026-02-02 |
@@ -79,7 +79,7 @@ Feature: Confirm expense is paid
       | Bob         | 30.00    | 30.00          | Unpaid |
 
   # Error Flow: Payment exceeds outstanding share
-  Scenario: Participant attempts to confirm payment exceeding their outstanding share
+  Scenario: ID010 Expense participant attempts to confirm payment exceeding their outstanding share    (Error Flow)
     Given user "Bob" is authenticated as a household member
     When "Bob" attempts to confirm payment of his expense share for expense "EXP-101" with amount 25.00 CAD
     Then the system rejects the payment confirmation
@@ -87,7 +87,7 @@ Feature: Confirm expense is paid
     And "Bob" expense share for expense "EXP-101" remains unchanged with outstanding 20.00 CAD
 
   # Error Flow: Attempt to confirm payment for already paid share
-  Scenario: Participant attempts to confirm payment for an already paid expense share
+  Scenario: ID010 Expense participant attempts to confirm payment for an already paid expense share    (Error Flow)
     Given user "Bob" is authenticated as a household member
     And "Bob" has already confirmed payment of his expense share for expense "EXP-101"
     And expense "EXP-101" has the following expense shares

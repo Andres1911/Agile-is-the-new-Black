@@ -18,7 +18,7 @@ from ..conftest import create_expense as api_create_expense
 from ..conftest import register as register_user
 
 # 1. Bind Feature file
-scenarios("features/ID007_Create_Split_Expense.feature")
+scenarios("features/ID007_Create_And_Split_Expense.feature")
 
 
 @pytest.fixture()
