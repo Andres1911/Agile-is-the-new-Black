@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr
 
@@ -156,6 +157,12 @@ class ConfirmPaymentRequest(BaseModel):
     """Request body for confirming payment of an expense share."""
 
     amount: float
+
+
+class RespondExpenseShareRequest(BaseModel):
+    """Request body for accepting or declining an expense share."""
+
+    decision: Literal["accept", "decline"]
 
 
 # ── Token schemas ────────────────────────────────────────────────────────
