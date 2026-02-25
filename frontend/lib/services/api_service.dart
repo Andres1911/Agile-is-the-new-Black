@@ -306,6 +306,20 @@ class ApiService {
     }
   }
 
+  Future<List<dynamic>> getOutstandingExpenses() async {
+    await _loadToken();
+    final response = await http.get(
+      Uri.parse('$baseUrl/expenses/outstanding'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as List<dynamic>;
+    } else {
+      throw Exception('Failed to load outstanding expenses: ${response.body}');
+    }
+  }
+
   // ------------------------------------------------------------------------------
 
 }

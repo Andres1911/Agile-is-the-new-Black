@@ -139,6 +139,22 @@ class ExpenseWithShares(Expense):
     shares: list[ExpenseShare] = []
 
 
+class OutstandingExpense(BaseModel):
+    """Represents the current user's outstanding share for a given expense."""
+
+    expense_id: int
+    description: str
+    category: str | None = None
+    date: datetime
+    household_id: int
+    creator_id: int
+    creator_username: str
+    amount_total: float
+    amount_owed: float
+    paid_amount: float
+    outstanding_amount: float
+
+
 class ManualShare(BaseModel):
     user_id: int
     amount: float

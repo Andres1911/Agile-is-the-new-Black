@@ -12,10 +12,66 @@ from app.models.models import (
     User,
     VoteStatus,
 )
-from app.schemas.schemas import ConfirmPaymentRequest, ExpenseCreate, RespondExpenseShareRequest
+from app.schemas.schemas import ConfirmPaymentRequest, ExpenseCreate, RespondExpenseShareRequest, OutstandingExpense
 
 
 router = APIRouter()
+
+
+@router.get("/outstanding", response_model=list[OutstandingExpense])
+def get_outstanding_expenses(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return all expenses where the current user still owes money."""
+
+    membership = (
+        db.query(HouseholdMember)
+        .filter(
+            HouseholdMember.user_id == current_user.id,
+            HouseholdMember.left_at.is_(None),
+        )
+        .first()
+    )
+    if not membership:
+        raise HTTPException(status_code=404, detail="No active household found")
+
+    rows = (
+        db.query(Expense, ExpenseShare, User)
+        .join(ExpenseShare, ExpenseShare.expense_id == Expense.id)
+        .join(User, User.id == Expense.creator_id)
+        .filter(
+            Expense.household_id == membership.household_id,
+            ExpenseShare.user_id == current_user.id,
+            ExpenseShare.amount_owed > ExpenseShare.paid_amount,
+            ExpenseShare.is_paid.is_(False),
+        )
+        .order_by(Expense.date.desc())
+        .all()
+    )
+
+    result: list[OutstandingExpense] = []
+    for expense, share, creator in rows:
+        outstanding = round(float(share.amount_owed - share.paid_amount), 2)
+        if outstanding <= 0:
+            continue
+        result.append(
+            OutstandingExpense(
+                expense_id=expense.id,
+                description=expense.description,
+                category=expense.category,
+                date=expense.date,
+                household_id=expense.household_id,
+                creator_id=expense.creator_id,
+                creator_username=creator.username,
+                amount_total=float(expense.amount),
+                amount_owed=float(share.amount_owed),
+                paid_amount=float(share.paid_amount),
+                outstanding_amount=outstanding,
+            )
+        )
+
+    return result
 
 
 @router.post("/create-and-split", status_code=201)
