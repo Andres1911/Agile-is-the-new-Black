@@ -17,32 +17,32 @@ Feature: View outstanding expenses and balances
       | Taxi              | Bob    | Alice | 25.00      | ACCEPTED   | True   |
     And the user "Alice" is logged in
 
-  Scenario: View shares where the user owes money (Normal Flow)
+  Scenario: ID009 retrieve_outstanding_shares_owed_by_user    (Normal Flow)
     When "Alice" requests her balances using GET "/users/me/balances"
     Then the household "MapleHouse" should show outstanding owed by "Alice" of 150.00 CAD
     And the response should include 2 outstanding shares where payer is "Alice"
     And the response should not include shares with vote status not "ACCEPTED"
     And the response should not include shares marked as paid
 
-  Scenario: View expenses where the user is payee and is owed (Normal Flow)
+  Scenario: ID009 retrieve_outstanding_shares_owed_to_user    (Normal Flow)
     When "Alice" requests her balances using GET "/users/me/balances"
     Then the household "MapleHouse" should show outstanding owed to "Alice" of 60.00 CAD
     And the response should include 1 outstanding share where payee is "Alice"
 
-  Scenario: View all outstanding household expenses summary (Normal Flow)
+  Scenario: ID009 retrieve_household_balance_summary    (Normal Flow)
     When "Alice" requests her balances using GET "/users/me/balances"
     Then the response should include a summary for household "MapleHouse"
     And the summary total outstanding owed by "Alice" should be 150.00 CAD
     And the summary total outstanding owed to "Alice" should be 60.00 CAD
 
-  Scenario: Member with no outstanding balances (Empty State)
+  Scenario: ID009 Member with no outstanding balances view outstanding expenses   (Alternative Flow)
     Given all expense shares for "Alice" in "MapleHouse" are marked as paid
     When "Alice" requests her balances using GET "/users/me/balances"
     Then the household "MapleHouse" should show outstanding owed by "Alice" of 0.00 CAD
     And the household "MapleHouse" should show outstanding owed to "Alice" of 0.00 CAD
     And the message "No outstanding balances" is issued
 
-  Scenario: User not in any household (Error Flow)
+  Scenario: ID009 User not in any household attempt to view outstanding expenses    (Error Flow)
     Given a user with username "Charlie" exists in the system
     And "Charlie" is logged in
     And "Charlie" is not a member of any household

@@ -12,7 +12,7 @@ from tests.conftest import login, register
 
 
 class TestLoginEdgeCases:
-    def test_token_contains_correct_subject(self, client):
+    def test_ID002_token_contains_correct_subject(self, client):
         register(client)
         from jose import jwt
 
@@ -22,7 +22,7 @@ class TestLoginEdgeCases:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         assert payload["sub"] == "testuser"
 
-    def test_inactive_user_rejected(self, client):
+    def test_ID002_inactive_user_rejected(self, client):
         """An inactive user should be rejected even with correct credentials."""
         register(client)
         from app.models.models import User as UserModel
@@ -43,14 +43,14 @@ class TestLoginEdgeCases:
 
 
 class TestGetCurrentUserEdgeCases:
-    def test_invalid_token_returns_401(self, client):
+    def test_ID002_invalid_token_returns_401(self, client):
         resp = client.get(
             "/api/v1/auth/me",
             headers={"Authorization": "Bearer totally.invalid.token"},
         )
         assert resp.status_code == 401
 
-    def test_nonexistent_user_in_token_returns_401(self, client):
+    def test_ID002_nonexistent_user_in_token_returns_401(self, client):
         token = create_access_token(data={"sub": "no_such_user"})
         resp = client.get(
             "/api/v1/auth/me",
@@ -58,7 +58,7 @@ class TestGetCurrentUserEdgeCases:
         )
         assert resp.status_code == 401
 
-    def test_token_without_sub_returns_401(self, client):
+    def test_ID002_token_without_sub_returns_401(self, client):
         token = create_access_token(data={"role": "admin"})
         resp = client.get(
             "/api/v1/auth/me",

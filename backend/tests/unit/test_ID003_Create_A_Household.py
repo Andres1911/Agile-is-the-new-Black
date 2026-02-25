@@ -8,7 +8,7 @@ from tests.conftest import TestingSessionLocal, login, register
 
 
 class TestCreateHousehold:
-    def test_create_household_success(self, client):
+    def test_ID003_User_not_living_in_household_creates_household_successfully(self, client):
         # arrange
         register(client, username="alice", email="alice@test.com")
         auth_resp = login(client, username="alice")
@@ -40,7 +40,7 @@ class TestCreateHousehold:
         assert membership.is_admin is True
         db.close()
 
-    def test_create_household_after_leaving_previous(self, client):
+    def test_ID003_User_successfully_creates_household_after_leaving_previous_household(self, client):
         register(client, username="leaver", email="leaver@test.com")
         auth_resp = login(client, username="leaver")
         headers = {"Authorization": f"Bearer {auth_resp.json()['access_token']}"}
@@ -64,7 +64,7 @@ class TestCreateHousehold:
         assert len(memberships) == 2
         db.close()
 
-    def test_create_household_duplicate_name(self, client):
+    def test_ID003_User_attempts_to_create_household_with_existing_name(self, client):
         register(client, username="tester", email="tester@test.com")
         auth_resp = login(client, username="tester")
         headers = {"Authorization": f"Bearer {auth_resp.json()['access_token']}"}
@@ -80,7 +80,7 @@ class TestCreateHousehold:
         assert "name already exists" in response.json()["detail"].lower()
         db.close()
 
-    def test_create_household_already_in_one(self, client):
+    def test_ID003_User_attempts_to_create_household_while_living_in_another(self, client):
         register(client, username="active_user", email="active@test.com")
         auth_resp = login(client, username="active_user")
         headers = {"Authorization": f"Bearer {auth_resp.json()['access_token']}"}
@@ -103,13 +103,13 @@ class TestCreateHousehold:
         )
         db.close()
 
-    def test_create_household_unauthorized(self, client):
+    def test_ID003_User_not_logged_in_attempt_to_create_household(self, client):
         # No login, no headers
         payload = {"name": "Ghost House"}
         response = client.post("/api/v1/households/", json=payload)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_create_household_missing_fields(self, client):
+    def test_ID003_User_attempts_to_create_household_with_missing_fields(self, client):
         register(client, username="bad_data", email="bad@test.com")
         auth_resp = login(client, username="bad_data")
         headers = {"Authorization": f"Bearer {auth_resp.json()['access_token']}"}
@@ -119,7 +119,7 @@ class TestCreateHousehold:
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
-    def test_create_household_long_strings(self, client):
+    def test_ID003_User_attempts_to_create_household_with_long_strings(self, client):
         register(client, username="long_str", email="long@test.com")
         auth_resp = login(client, username="long_str")
         headers = {"Authorization": f"Bearer {auth_resp.json()['access_token']}"}
@@ -133,7 +133,7 @@ class TestCreateHousehold:
         assert data["description"] == "A" * 1000
         assert data["address"] == "B" * 1000
 
-    def test_create_household_trims_whitespace(self, client):
+    def test_ID003_system_trims_whitespace(self, client):
         register(client, username="trim_user", email="trim@test.com")
         auth_resp = login(client, username="trim_user")
         headers = {"Authorization": f"Bearer {auth_resp.json()['access_token']}"}
@@ -147,7 +147,7 @@ class TestCreateHousehold:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.json()["name"] == "Space House"  # should be trimmed
 
-    def test_create_household_unicode_support(self, client):
+    def test_ID003_Household_creation_has_unicode_support(self, client):
         register(client, username="euro_user", email="euro@test.com")
         auth_resp = login(client, username="euro_user")
         headers = {"Authorization": f"Bearer {auth_resp.json()['access_token']}"}
