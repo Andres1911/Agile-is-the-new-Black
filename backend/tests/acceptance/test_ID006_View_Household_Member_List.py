@@ -1,6 +1,6 @@
-"""Acceptance tests for ID008 — View Household Member List.
+"""Acceptance tests for ID006 — View Household Member List.
 
-Binds to: features/ID008_View_Household_Member_list.feature
+Binds to: features/ID006_View_Household_Member_list.feature
 """
 
 import pytest
@@ -11,7 +11,7 @@ from app.models.models import User as UserModel
 from tests.conftest import auth_header as get_auth_header
 from tests.conftest import register as register_user
 
-scenarios("features/ID008_View_Household_Member_list.feature")
+scenarios("features/ID006_View_Household_Member_List.feature")
 
 
 @pytest.fixture()

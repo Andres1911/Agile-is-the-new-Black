@@ -8,7 +8,7 @@ from tests.conftest import auth_header as get_auth_header
 from tests.conftest import create_expense as api_create_expense
 from tests.conftest import register as register_user
 
-scenarios("features/ID010_Confirm_expense_is_paid.feature")
+scenarios("features/ID010_Confirm_Expense_Is_Paid.feature")
 
 
 def get_table_dicts(datatable):

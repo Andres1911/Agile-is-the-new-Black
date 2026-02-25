@@ -7,8 +7,7 @@ from app.models.models import Expense, ExpenseShare, Household, HouseholdMember,
 from tests.conftest import login
 from tests.conftest import register as register_user
 
-# Link the featur
-pytestmark = pytest.mark.xfail(reason="Balances endpoint not implemented yet", strict=False)
+
 
 scenarios("features/ID009_View_Outstanding_Expenses.feature")
 
@@ -27,6 +26,22 @@ def get_table_dicts(datatable):
 def _get_user(db, username: str) -> User:
     user = db.query(User).filter(User.username == username).first()
     assert user is not None, f"User '{username}' not found"
+    return user
+
+
+def _get_or_create_user(db, username: str) -> User:
+    """Get user or create if doesn't exist."""
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        from app.core.security import get_password_hash
+        user = User(
+            username=username,
+            email=f"{username.lower()}@test.com",
+            password_hash=get_password_hash("Password123!"),
+            full_name=username,
+        )
+        db.add(user)
+        db.flush()
     return user
 
 
@@ -103,8 +118,8 @@ def given_expense_shares(db, hh_name, datatable, context):
         vote_status = VoteStatus[row["VoteStatus"].upper()]
         is_paid = row["IsPaid"].strip().lower() == "true"
 
-        payee = _get_user(db, payee_name)
-        payer = _get_user(db, payer_name)
+        payee = _get_or_create_user(db, payee_name)
+        payer = _get_or_create_user(db, payer_name)
 
         # Create an expense (date offset keeps deterministic ordering if needed)
         exp = Expense(
@@ -144,15 +159,28 @@ def given_all_shares_paid(db, username, hh_name):
     hh = _get_household(db, hh_name)
     user = _get_user(db, username)
 
-    shares = (
+    # Mark all shares where user is the payer
+    payer_shares = (
         db.query(ExpenseShare)
         .join(Expense, ExpenseShare.expense_id == Expense.id)
         .filter(Expense.household_id == hh.id, ExpenseShare.user_id == user.id)
         .all()
     )
-    for s in shares:
+    for s in payer_shares:
         s.is_paid = True
         s.paid_amount = s.amount_owed
+    
+    # Mark all shares where user is the payee (expense creator)
+    payee_shares = (
+        db.query(ExpenseShare)
+        .join(Expense, ExpenseShare.expense_id == Expense.id)
+        .filter(Expense.household_id == hh.id, Expense.creator_id == user.id)
+        .all()
+    )
+    for s in payee_shares:
+        s.is_paid = True
+        s.paid_amount = s.amount_owed
+    
     db.commit()
 
 

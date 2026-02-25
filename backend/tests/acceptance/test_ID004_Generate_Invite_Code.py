@@ -1,4 +1,4 @@
-"""Step definitions for ID004_Generate_Unique_Invite_Code.feature."""
+"""Step definitions for ID004_Generate_Invite_Code.feature."""
 
 import re
 import secrets
@@ -9,7 +9,7 @@ from pytest_bdd import given, parsers, scenarios, then, when
 from app.core.invite_codes import generate_unique_invite_code
 from app.models.models import Household, HouseholdMember, User
 
-scenarios("features/ID004_Generate_Unique_Invite_Code.feature")
+scenarios("features/ID004_Generate_Invite_Code.feature")
 
 INVITE_CODE_RE = re.compile(r"^[A-Z0-9]{8}$")
 
