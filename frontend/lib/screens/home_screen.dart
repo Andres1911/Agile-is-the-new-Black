@@ -4,6 +4,7 @@ import '../models/expense.dart';
 import '../models/household.dart';
 import 'add_household_screen.dart';
 import 'login_screen.dart';
+import 'outstanding_expenses_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,7 +18,6 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Expense> _expenses = [];
   Household? _household;
   bool _isLoading = false;
-  String? _errorMessage;
   int _selectedIndex = 0;
 
   @override
@@ -29,7 +29,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
     });
 
     Household? loadedHousehold;
@@ -61,7 +60,6 @@ class _HomeScreenState extends State<HomeScreen> {
         _household = loadedHousehold;
         _expenses = loadedExpenses;
         _isLoading = false;
-        _errorMessage = error;
       });
       if (error != null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -103,6 +101,18 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('Expense Tracker'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.pending_actions_outlined),
+            tooltip: 'Outstanding',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const OutstandingExpensesScreen(),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadData,
