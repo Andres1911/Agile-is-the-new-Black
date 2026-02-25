@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, expenses, households
+from app.api import auth, expenses, households, users
 from app.core.config import settings
 from app.db.database import Base, engine
 
@@ -26,6 +26,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["auth"])
+app.include_router(users.router, prefix=f"{settings.API_V1_STR}/users", tags=["users"])
 # Expenses & Households routers are registered but currently empty
 # — endpoints will be added as the project evolves.
 app.include_router(expenses.router, prefix=f"{settings.API_V1_STR}/expenses", tags=["expenses"])
