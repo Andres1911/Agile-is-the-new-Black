@@ -117,7 +117,7 @@ class TestCreateHousehold:
         payload = {"description": "Missing the name field"}
         response = client.post("/api/v1/households/", json=payload, headers=headers)
 
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
     def test_ID003_User_attempts_to_create_household_with_long_strings(self, client):
         register(client, username="long_str", email="long@test.com")
