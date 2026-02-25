@@ -4,6 +4,7 @@ import '../models/expense.dart';
 import '../models/household.dart';
 import 'add_household_screen.dart';
 import 'login_screen.dart';
+import 'pay_expense_screen.dart';
 import 'outstanding_expenses_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -182,9 +183,32 @@ class _HomeScreenState extends State<HomeScreen> {
             subtitle: Text(
               '${expense.category ?? 'Uncategorized'} - ${expense.date.toString().split(' ')[0]}',
             ),
-            trailing: IconButton(
-              icon: const Icon(Icons.delete),
-              onPressed: () => _deleteExpense(expense.id!),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min, // Crucial: prevents the Row from taking full width
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.payment, color: Colors.green),
+                  tooltip: 'Pay Share',
+                  onPressed: () async {
+                    // 1. Navigate to the Pay Page
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PayExpenseScreen(expense: expense),
+                      ),
+                    );
+
+                    // 2. If the user successfully paid (result is true), refresh the list
+                    if (result == true) {
+                      _loadData();
+                    }
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.grey),
+                  onPressed: () => _deleteExpense(expense.id!),
+                ),
+              ],
             ),
           ),
         );
