@@ -17,7 +17,7 @@ Feature: Simplify household expense debt
       | Cara   | Bob      | 10.00     |
 
   # Normal Flow: Circular debts cancel out completely
-  Scenario: Fully circular debts are simplified to zero
+  Scenario: Fully circular debts are simplified to zero    (normal flow)
     Given user "Alice" is authenticated as a household member
     When "Alice" requests to simplify household debts
     Then the system calculates the net balances between all members
@@ -30,7 +30,7 @@ Feature: Simplify household expense debt
     And the system displays message "All circular debts have been simplified"
 
   # Normal Flow: Partial simplification of debts
-  Scenario: Circular debts are partially simplified when amounts differ
+  Scenario: Circular debts are partially simplified when amounts differ    (normal flow)
     Given the following net debts exist between members
       | debtor | creditor | amountCAD |
       | Bob    | Alice    | 15.00     |
@@ -45,7 +45,7 @@ Feature: Simplify household expense debt
     And the system displays message "Household debts simplified successfully"
 
   # Normal Flow: Chain simplification (no cycle but reducible)
-  Scenario: Linear chain debts are simplified to a direct debt
+  Scenario: Linear chain debts are simplified to a direct debt    (normal flow)
     Given the following net debts exist between members
       | debtor | creditor | amountCAD |
       | Bob    | Alice    | 20.00     |
@@ -62,7 +62,7 @@ Feature: Simplify household expense debt
     And the system displays message "Debts simplified to minimize transactions"
 
   # Alternative Flow: No simplification possible
-  Scenario: No simplification occurs when debts are independent
+  Scenario: No simplification occurs when debts are independent    (alternative flow)
     Given the following net debts exist between members
       | debtor | creditor | amountCAD |
       | Bob    | Alice    | 10.00     |
@@ -74,14 +74,14 @@ Feature: Simplify household expense debt
     And the system displays message "No simplifications available"
 
   # Error Flow: Unauthorized user attempts simplification
-  Scenario: Non-member attempts to simplify debts
+  Scenario: Non-member attempts to simplify debts    (error flow)
     Given user "David" is not a member of household "MapleHouse"
     When "David" attempts to simplify household debts
     Then the system rejects the request
     And the system displays error message "Unauthorized: Only household members can simplify debts"
 
   # Edge Case: Household with no debts
-  Scenario: Simplification requested when no debts exist
+  Scenario: Simplification requested when no debts exist    (Alternative flow)
     Given no outstanding debts exist between members
     And user "Alice" is authenticated as a household member
     When "Alice" requests to simplify household debts
