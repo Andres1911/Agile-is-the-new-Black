@@ -108,8 +108,24 @@ class _OutstandingExpensesScreenState extends State<OutstandingExpensesScreen> {
                           ),
                           child: ListTile(
                             leading: CircleAvatar(
-                              child: Text(
-                                '\$${item.outstandingAmount.toStringAsFixed(2)}',
+                              radius: 22,
+                              backgroundColor:
+                                  theme.colorScheme.primaryContainer,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                  ),
+                                  child: Text(
+                                    '\$${item.outstandingAmount.toStringAsFixed(0)}',
+                                    style: theme.textTheme.labelLarge?.copyWith(
+                                      color: theme
+                                          .colorScheme.onPrimaryContainer,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                             title: Text(item.description),

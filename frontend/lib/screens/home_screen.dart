@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../models/expense.dart';
 import '../models/household.dart';
+import '../models/user.dart';
 import 'add_household_screen.dart';
 import 'login_screen.dart';
 import 'outstanding_expenses_screen.dart';
@@ -17,8 +18,11 @@ class _HomeScreenState extends State<HomeScreen> {
   final _apiService = ApiService();
   List<Expense> _expenses = [];
   Household? _household;
+  User? _currentUser;
   bool _isLoading = false;
   int _selectedIndex = 0;
+  String? _errorBanner;
+  bool _showErrorBanner = false;
 
   @override
   void initState() {
@@ -29,13 +33,18 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
+      _errorBanner = null;
     });
 
+    User? loadedUser;
     Household? loadedHousehold;
     List<Expense> loadedExpenses = [];
     String? error;
 
     try {
+      final userJson = await _apiService.getCurrentUser();
+      loadedUser = User.fromJson(userJson);
+
       final data = await _apiService.getMyHousehold();
       if (data != null) {
         loadedHousehold = Household.fromJson(data);
@@ -57,18 +66,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (mounted) {
       setState(() {
+        _currentUser = loadedUser;
         _household = loadedHousehold;
         _expenses = loadedExpenses;
         _isLoading = false;
       });
       if (error != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error),
-            duration: const Duration(seconds: 5),
-            action: SnackBarAction(label: 'Retry', onPressed: _loadData),
-          ),
-        );
+        _showError(error);
       }
     }
   }
@@ -89,8 +93,25 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _showError(String message) {
+    setState(() {
+      _errorBanner = message;
+      _showErrorBanner = true;
+    });
+    Future.delayed(const Duration(seconds: 5), () {
+      if (!mounted) return;
+      if (_errorBanner == message) {
+        setState(() {
+          _showErrorBanner = false;
+        });
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     final List<Widget> widgetOptions = <Widget>[
       _buildExpensesTab(),
       _buildHouseholdsTab(),
@@ -119,9 +140,81 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : widgetOptions.elementAt(_selectedIndex),
+      body: Stack(
+        children: [
+          if (_isLoading)
+            const Center(child: CircularProgressIndicator())
+          else
+            widgetOptions.elementAt(_selectedIndex),
+          IgnorePointer(
+            ignoring: !_showErrorBanner,
+            child: AnimatedSlide(
+              offset: _showErrorBanner ? Offset.zero : const Offset(0, -1),
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOutCubic,
+              child: AnimatedOpacity(
+                opacity: _showErrorBanner ? 1 : 0,
+                duration: const Duration(milliseconds: 300),
+                child: SafeArea(
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: Padding(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 420),
+                        child: Material(
+                          color: theme.colorScheme.errorContainer,
+                          elevation: 6,
+                          borderRadius: BorderRadius.circular(16),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.error_outline_rounded,
+                                  color: theme.colorScheme.onErrorContainer,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    _errorBanner ?? '',
+                                    style: TextStyle(
+                                      color:
+                                          theme.colorScheme.onErrorContainer,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  visualDensity: VisualDensity.compact,
+                                  icon: Icon(
+                                    Icons.close,
+                                    color: theme.colorScheme.onErrorContainer,
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _showErrorBanner = false;
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
@@ -168,6 +261,8 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
+    final theme = Theme.of(context);
+
     return ListView.builder(
       itemCount: _expenses.length,
       itemBuilder: (context, index) {
@@ -176,7 +271,21 @@ class _HomeScreenState extends State<HomeScreen> {
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: ListTile(
             leading: CircleAvatar(
-              child: Text('\$${expense.amount.toStringAsFixed(0)}'),
+              radius: 22,
+              backgroundColor: theme.colorScheme.primaryContainer,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  child: Text(
+                    '\$${expense.amount.toStringAsFixed(0)}',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: theme.colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
             ),
             title: Text(expense.description),
             subtitle: Text(
@@ -221,27 +330,108 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildProfileTab() {
+    final theme = Theme.of(context);
+    final user = _currentUser;
+
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.person, size: 100),
-          const SizedBox(height: 24),
-          const Text(
-            'Profile',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: Column(
+            children: [
+              CircleAvatar(
+                radius: 40,
+                backgroundColor: theme.colorScheme.primaryContainer,
+                child: Text(
+                  (user?.fullName?.isNotEmpty == true
+                          ? user!.fullName![0]
+                          : user?.username[0] ?? '?')
+                      .toUpperCase(),
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    color: theme.colorScheme.onPrimaryContainer,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                user?.fullName?.isNotEmpty == true
+                    ? user!.fullName!
+                    : user?.username ?? 'Student',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 4),
+              if (user != null)
+                Text(
+                  '@${user.username}',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              const SizedBox(height: 16),
+              if (user != null)
+                Card(
+                  margin: const EdgeInsets.only(top: 8),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Account',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            const Icon(Icons.email_outlined, size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                user.email,
+                                style: theme.textTheme.bodyMedium,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(Icons.calendar_today_outlined, size: 18),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Joined: ${user.createdAt.toLocal().toString().split(' ').first}',
+                              style: theme.textTheme.bodyMedium,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton.icon(
+                  onPressed: _logout,
+                  icon: const Icon(Icons.logout),
+                  label: const Text('Logout'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 48),
-          ElevatedButton.icon(
-            onPressed: _logout,
-            icon: const Icon(Icons.logout),
-            label: const Text('Logout'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -258,7 +448,7 @@ class _HomeScreenState extends State<HomeScreen> {
       currentUserId = data['current_user_id'];
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      _showError('Failed to load household members: $e');
       return;
     }
 
@@ -283,51 +473,81 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       TextField(
                         controller: amountController,
-                        decoration: const InputDecoration(labelText: 'Total Amount', prefixText: '\$ '),
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: const InputDecoration(
+                          labelText: 'Total Amount',
+                          prefixText: '\$ ',
+                        ),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                       ),
-                      TextField(controller: descriptionController, decoration: const InputDecoration(labelText: 'Description')),
-                      TextField(controller: categoryController, decoration: const InputDecoration(labelText: 'Category (Optional)')),
-                      const Divider(height: 30),
-                      
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: descriptionController,
+                        decoration: const InputDecoration(
+                          labelText: 'Description',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: categoryController,
+                        decoration: const InputDecoration(
+                          labelText: 'Category (Optional)',
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Divider(height: 32),
                       SwitchListTile(
                         title: const Text('Split Evenly'),
                         value: splitEvenly,
-                        onChanged: (val) => setStateDialog(() => splitEvenly = val),
+                        onChanged: (val) =>
+                            setStateDialog(() => splitEvenly = val),
                       ),
-
                       if (!splitEvenly) ...[
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 8.0),
-                          child: Text("Assign Individual Shares:", style: TextStyle(fontWeight: FontWeight.bold)),
+                          child: Text(
+                            'Assign Individual Shares',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
                         ),
                         ...activeMembers.map((member) {
                           final int userId = member['id'];
-                          final String name = userId == currentUserId ? "${member['username']} (Me)" : member['username'];
+                          final String name = userId == currentUserId
+                              ? '${member['username']} (Me)'
+                              : member['username'];
 
                           return Padding(
                             padding: const EdgeInsets.symmetric(vertical: 4.0),
                             child: Row(
                               children: [
                                 Expanded(child: Text(name)),
+                                const SizedBox(width: 8),
                                 SizedBox(
-                                  width: 90,
+                                  width: 96,
                                   child: TextField(
-                                    // Removed 'const' from parent or used static access correctly
-                                    decoration: const InputDecoration(isDense: true, border: OutlineInputBorder(), prefixText: '\$'),
-                                    keyboardType: TextInputType.text, 
+                                    decoration: const InputDecoration(
+                                      isDense: true,
+                                      border: OutlineInputBorder(),
+                                      prefixText: '\$',
+                                    ),
+                                    keyboardType:
+                                        const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    ),
                                     onChanged: (val) {
                                       if (val.trim().isEmpty) {
                                         manualInputs.remove(userId);
                                       } else {
                                         manualInputs[userId] = val.trim();
-                                        
-                                        // If user fills their own box, ensure include_creator is true
+
                                         if (userId == currentUserId) {
-                                          setStateDialog(() => includeCreator = true);
+                                          setStateDialog(
+                                              () => includeCreator = true);
                                         }
                                       }
                                     },
@@ -338,19 +558,23 @@ class _HomeScreenState extends State<HomeScreen> {
                           );
                         }).toList(),
                       ],
-
                       if (splitEvenly)
                         CheckboxListTile(
                           title: const Text('Include Me'),
                           value: includeCreator,
-                          onChanged: (val) => setStateDialog(() => includeCreator = val ?? true),
+                          onChanged: (val) => setStateDialog(
+                            () => includeCreator = val ?? true,
+                          ),
                         ),
                     ],
                   ),
                 ),
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
                 ElevatedButton(
                   onPressed: () async {
                     final totalStr = amountController.text.trim();
@@ -358,11 +582,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     final description = descriptionController.text.trim();
 
                     if (description.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a description')));
+                      Navigator.of(context).pop();
+                      _showError('Please enter a description');
                       return;
                     }
-                    if (totalStr.isEmpty || double.tryParse(totalStr) == null || total <= 0) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a valid total amount')));
+                    if (totalStr.isEmpty ||
+                        double.tryParse(totalStr) == null ||
+                        total <= 0) {
+                      Navigator.of(context).pop();
+                      _showError('Please enter a valid total amount');
                       return;
                     }
 
@@ -371,21 +599,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     if (!splitEvenly) {
                       List<Map<String, dynamic>> sharesList = [];
-                      
+
                       for (var entry in manualInputs.entries) {
                         final userId = entry.key;
                         final rawValue = entry.value;
 
                         double? parsedValue = double.tryParse(rawValue);
                         if (parsedValue == null) {
-                          // Throw error if it's not a number (e.g., "ddd")
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Invalid number for user $userId: "$rawValue"'))
+                          Navigator.of(context).pop();
+                          _showError(
+                            'Invalid amount for member $userId: "$rawValue"',
                           );
                           return;
                         }
 
-                        // Add to DTO even if it's 0 or negative; backend will handle the logic
                         sharesList.add({
                           'user_id': userId,
                           'amount': parsedValue,
@@ -397,10 +624,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       }
 
                       if (sharesList.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill at least one share')));
+                        Navigator.of(context).pop();
+                        _showError('Please fill at least one share');
                         return;
                       }
-                      
+
                       finalManualShares = sharesList;
                     }
 
@@ -417,13 +645,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       if (!context.mounted) return;
                       Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Success!")));
                       _loadData(); 
                     } catch (e) {
                       if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                      _showError('Failed to create expense: $e');
                     }
                   },
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 14,
+                    ),
+                  ),
                   child: const Text('Submit'),
                 ),
               ],
@@ -440,9 +673,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _loadData();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to delete expense: $e')),
-      );
+      _showError('Failed to delete expense: $e');
     }
   }
 }
