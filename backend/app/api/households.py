@@ -289,7 +289,7 @@ def simplify_household_debts(
     1. Calculating net balances between members
     2. Identifying and removing circular debts
     3. Identifying and simplifying linear chains
-    
+
     Returns the list of debts that were simplified and remaining debts.
     """
     # 1. Verify user is a member of the household
@@ -320,7 +320,7 @@ def simplify_household_debts(
         .filter(
             Expense.household_id == household.id,
             ExpenseShare.vote_status == VoteStatus.ACCEPTED,
-            ExpenseShare.is_paid == False,
+            ExpenseShare.is_paid.is_(False),
         )
         .all()
     )
@@ -406,9 +406,9 @@ def simplify_household_debts(
                     for neighbor in adj[node]:
                         if neighbor == start and len(path) > 1:
                             # Found a cycle!
-                            return path + [start]
+                            return [*path, start]
                         elif neighbor not in path:
-                            stack.append((neighbor, path + [neighbor]))
+                            stack.append((neighbor, [*path, neighbor]))
 
             return None
 
@@ -513,7 +513,7 @@ def simplify_household_debts(
             debt_changes[debt_key] = (original_amount, remaining_amount)
 
     # For each debt that changed, mark old shares as paid and create new ones if needed
-    for debt_key, (original_amount, remaining_amount) in debt_changes.items():
+    for debt_key, (_original_amount, remaining_amount) in debt_changes.items():
         debtor_id, creditor_id = debt_key
 
         # Find all shares for this debt and mark them as paid
@@ -524,7 +524,7 @@ def simplify_household_debts(
                 Expense.household_id == household.id,
                 Expense.creator_id == creditor_id,
                 ExpenseShare.user_id == debtor_id,
-                ExpenseShare.is_paid == False,
+                ExpenseShare.is_paid.is_(False),
             )
             .all()
         )

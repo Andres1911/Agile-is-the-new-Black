@@ -17,7 +17,7 @@ def get_user_balances(
 ):
     """
     Get outstanding balances for the current user across all their households.
-    
+
     Returns:
     {
         "households": [
@@ -70,7 +70,7 @@ def get_user_balances(
                 Expense.household_id == hh.id,
                 ExpenseShare.user_id == current_user.id,
                 ExpenseShare.vote_status == VoteStatus.ACCEPTED,
-                ExpenseShare.is_paid == False,
+                ExpenseShare.is_paid.is_(False),
             )
             .with_entities(func.sum(ExpenseShare.amount_owed))
             .scalar()
@@ -84,7 +84,7 @@ def get_user_balances(
                 Expense.household_id == hh.id,
                 Expense.creator_id == current_user.id,
                 ExpenseShare.vote_status == VoteStatus.ACCEPTED,
-                ExpenseShare.is_paid == False,
+                ExpenseShare.is_paid.is_(False),
             )
             .with_entities(func.sum(ExpenseShare.amount_owed))
             .scalar()
@@ -106,7 +106,7 @@ def get_user_balances(
             Expense.household_id.in_(household_ids),
             ExpenseShare.user_id == current_user.id,
             ExpenseShare.vote_status == VoteStatus.ACCEPTED,
-            ExpenseShare.is_paid == False,
+            ExpenseShare.is_paid.is_(False),
         )
         .all()
     )
@@ -118,7 +118,7 @@ def get_user_balances(
             Expense.household_id.in_(household_ids),
             Expense.creator_id == current_user.id,
             ExpenseShare.vote_status == VoteStatus.ACCEPTED,
-            ExpenseShare.is_paid == False,
+            ExpenseShare.is_paid.is_(False),
         )
         .all()
     )

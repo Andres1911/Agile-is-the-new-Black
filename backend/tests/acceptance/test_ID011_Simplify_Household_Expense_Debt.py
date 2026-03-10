@@ -265,7 +265,7 @@ def then_debts_removed(db, datatable, context):
                 Expense.household_id == house.id,
                 Expense.creator_id == creditor.id,
                 ExpenseShare.user_id == debtor.id,
-                ExpenseShare.is_paid == False,
+                ExpenseShare.is_paid.is_(False)
             )
             .first()
         )
@@ -283,7 +283,7 @@ def then_no_debts_remain(db, context):
         .join(Expense, Expense.id == ExpenseShare.expense_id)
         .filter(
             Expense.household_id == house.id,
-            ExpenseShare.is_paid == False,
+            ExpenseShare.is_paid.is_(False)
         )
         .all()
     )
@@ -323,7 +323,7 @@ def then_debts_remain(db, datatable, context):
         .join(Expense, Expense.id == ExpenseShare.expense_id)
         .filter(
             Expense.household_id == house.id,
-            ExpenseShare.is_paid == False,
+            ExpenseShare.is_paid.is_(False)
         )
         .all()
     )
@@ -358,7 +358,7 @@ def then_simplified_debt_created(db, datatable, context):
                 Expense.creator_id == creditor.id,
                 ExpenseShare.user_id == debtor.id,
                 ExpenseShare.amount_owed == float(amount_str),
-                ExpenseShare.is_paid == False,
+                ExpenseShare.is_paid.is_(False)
             )
             .first()
         )
@@ -389,7 +389,7 @@ def then_all_debts_unchanged(db, context):
         .join(Expense, Expense.id == ExpenseShare.expense_id)
         .filter(
             Expense.household_id == house.id,
-            ExpenseShare.is_paid == False,
+            ExpenseShare.is_paid.is_(False)
         )
         .all()
     )
