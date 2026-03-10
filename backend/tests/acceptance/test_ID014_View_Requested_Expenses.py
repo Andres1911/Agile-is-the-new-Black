@@ -115,7 +115,11 @@ def given_logged_in(client, username, context):
     return context
 
 
-@given(parsers.parse('all requested expense shares for "{username}" in "{household_name}" are accepted'))
+@given(
+    parsers.parse(
+        'all requested expense shares for "{username}" in "{household_name}" are accepted'
+    )
+)
 def given_all_requested_shares_accepted(db, username, household_name):
     user = _get_user(db, username)
     household = _get_household(db, household_name)

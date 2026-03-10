@@ -421,7 +421,7 @@ def simplify_household_debts(
                 cycle = cycle[:-1]
 
                 # Calculate minimum amount in this cycle
-                min_amount = float('inf')
+                min_amount = float("inf")
                 for i in range(len(cycle)):
                     u1 = cycle[i]
                     u2 = cycle[(i + 1) % len(cycle)]
@@ -439,11 +439,13 @@ def simplify_household_debts(
                         if remaining_debts[key] <= 0.001:
                             del remaining_debts[key]
 
-                        simplified_debts.append({
-                            "debtor_id": u1,
-                            "creditor_id": u2,
-                            "amount": min_amount,
-                        })
+                        simplified_debts.append(
+                            {
+                                "debtor_id": u1,
+                                "creditor_id": u2,
+                                "amount": min_amount,
+                            }
+                        )
 
                     offset_total += min_amount
                     return True
@@ -491,11 +493,13 @@ def simplify_household_debts(
             remaining_debts[key] = amount
             # Record this as a new debt created by simplification
             debtor_id, creditor_id = key
-            simplified_debts.append({
-                "debtor_id": debtor_id,
-                "creditor_id": creditor_id,
-                "amount": amount,
-            })
+            simplified_debts.append(
+                {
+                    "debtor_id": debtor_id,
+                    "creditor_id": creditor_id,
+                    "amount": amount,
+                }
+            )
 
     # Now determine which debts were fully simplified by comparing original vs remaining
     for debt_key in original_remaining:
@@ -608,4 +612,3 @@ def simplify_household_debts(
             for (debtor_id, creditor_id), amount in remaining_debts.items()
         ],
     }
-

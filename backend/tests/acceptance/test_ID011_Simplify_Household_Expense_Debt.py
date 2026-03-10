@@ -37,16 +37,13 @@ def _get_user(db, username):
 def _clear_expenses(db, household_id):
     """Remove all expenses (and their shares) for a given household."""
     expense_ids = [
-        row[0]
-        for row in db.query(Expense.id).filter(Expense.household_id == household_id).all()
+        row[0] for row in db.query(Expense.id).filter(Expense.household_id == household_id).all()
     ]
     if expense_ids:
         db.query(ExpenseShare).filter(ExpenseShare.expense_id.in_(expense_ids)).delete(
             synchronize_session=False
         )
-        db.query(Expense).filter(Expense.id.in_(expense_ids)).delete(
-            synchronize_session=False
-        )
+        db.query(Expense).filter(Expense.id.in_(expense_ids)).delete(synchronize_session=False)
     db.flush()
 
 
@@ -105,6 +102,7 @@ def given_household_with_members(db, household_name, datatable, context):
 
         # Use direct DB insert instead of HTTP call to avoid sqlite3 locking
         from app.core.security import get_password_hash
+
         user = _get_user(db, member_name)
         if not user:
             user = User(
@@ -126,11 +124,7 @@ def given_household_with_members(db, household_name, datatable, context):
             .first()
         )
         if not already_member:
-            db.add(
-                HouseholdMember(
-                    user_id=user.id, household_id=house.id, is_admin=False
-                )
-            )
+            db.add(HouseholdMember(user_id=user.id, household_id=house.id, is_admin=False))
 
     db.commit()
     return context
@@ -265,7 +259,7 @@ def then_debts_removed(db, datatable, context):
                 Expense.household_id == house.id,
                 Expense.creator_id == creditor.id,
                 ExpenseShare.user_id == debtor.id,
-                ExpenseShare.is_paid.is_(False)
+                ExpenseShare.is_paid.is_(False),
             )
             .first()
         )
@@ -281,15 +275,10 @@ def then_no_debts_remain(db, context):
     unpaid = (
         db.query(ExpenseShare)
         .join(Expense, Expense.id == ExpenseShare.expense_id)
-        .filter(
-            Expense.household_id == house.id,
-            ExpenseShare.is_paid.is_(False)
-        )
+        .filter(Expense.household_id == house.id, ExpenseShare.is_paid.is_(False))
         .all()
     )
-    assert len(unpaid) == 0, (
-        f"Expected 0 outstanding debts, but found {len(unpaid)}."
-    )
+    assert len(unpaid) == 0, f"Expected 0 outstanding debts, but found {len(unpaid)}."
 
 
 @then(parsers.parse("the system offsets the circular portion of {amount} CAD"))
@@ -301,9 +290,7 @@ def then_circular_portion_offset(context, amount):
     assert context["response"].status_code == 200
     resp_body = context["response"].json()
     offset = float(resp_body.get("offset_amount", 0))
-    assert offset == float(amount), (
-        f"Expected offset of {amount} CAD, got {offset}."
-    )
+    assert offset == float(amount), f"Expected offset of {amount} CAD, got {offset}."
 
 
 @then(parsers.parse("the following debts remain"))
@@ -321,17 +308,12 @@ def then_debts_remain(db, datatable, context):
     rows = (
         db.query(ExpenseShare, Expense)
         .join(Expense, Expense.id == ExpenseShare.expense_id)
-        .filter(
-            Expense.household_id == house.id,
-            ExpenseShare.is_paid.is_(False)
-        )
+        .filter(Expense.household_id == house.id, ExpenseShare.is_paid.is_(False))
         .all()
     )
     actual = {(share.user_id, expense.creator_id, expense.amount) for share, expense in rows}
 
-    assert actual == expected, (
-        f"Debt mismatch.\n  Expected: {expected}\n  Actual:   {actual}"
-    )
+    assert actual == expected, f"Debt mismatch.\n  Expected: {expected}\n  Actual:   {actual}"
 
 
 @then(parsers.parse("the system removes the intermediate debt"))
@@ -358,7 +340,7 @@ def then_simplified_debt_created(db, datatable, context):
                 Expense.creator_id == creditor.id,
                 ExpenseShare.user_id == debtor.id,
                 ExpenseShare.amount_owed == float(amount_str),
-                ExpenseShare.is_paid.is_(False)
+                ExpenseShare.is_paid.is_(False),
             )
             .first()
         )
@@ -387,10 +369,7 @@ def then_all_debts_unchanged(db, context):
     unpaid = (
         db.query(ExpenseShare)
         .join(Expense, Expense.id == ExpenseShare.expense_id)
-        .filter(
-            Expense.household_id == house.id,
-            ExpenseShare.is_paid.is_(False)
-        )
+        .filter(Expense.household_id == house.id, ExpenseShare.is_paid.is_(False))
         .all()
     )
     assert len(unpaid) > 0, "Expected debts to remain unchanged, but none were found."
@@ -400,9 +379,7 @@ def then_all_debts_unchanged(db, context):
 def then_no_changes_performed(db, context):
     house = _get_house(db, context["household_name"])
     expenses = db.query(Expense).filter(Expense.household_id == house.id).all()
-    assert len(expenses) == 0, (
-        f"Expected no expenses to exist, but found {len(expenses)}."
-    )
+    assert len(expenses) == 0, f"Expected no expenses to exist, but found {len(expenses)}."
 
 
 @then(parsers.parse("the system rejects the request"))

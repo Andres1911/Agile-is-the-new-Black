@@ -32,6 +32,7 @@ def _get_or_create_user(db, username: str) -> User:
     user = db.query(User).filter(User.username == username).first()
     if not user:
         from app.core.security import get_password_hash
+
         user = User(
             username=username,
             email=f"{username.lower()}@test.com",

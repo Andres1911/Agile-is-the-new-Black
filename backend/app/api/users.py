@@ -90,12 +90,14 @@ def get_user_balances(
             .scalar()
         ) or 0.0
 
-        households_data.append({
-            "id": hh.id,
-            "name": hh.name,
-            "owed_by_me": float(owed_by_me),
-            "owed_to_me": float(owed_to_me),
-        })
+        households_data.append(
+            {
+                "id": hh.id,
+                "name": hh.name,
+                "owed_by_me": float(owed_by_me),
+                "owed_to_me": float(owed_to_me),
+            }
+        )
 
     # Get all unpaid, accepted shares for the user across all their households
     # (both as payer and payee)
@@ -128,35 +130,37 @@ def get_user_balances(
     # Add shares where user owes money
     for share, expense in shares_as_payer:
         payee = db.query(UserModel).filter(UserModel.id == expense.creator_id).first()
-        shares_data.append({
-            "id": share.id,
-            "expense_id": expense.id,
-            "expense_description": expense.description,
-            "payer": current_user.username,
-            "payee": payee.username if payee else "Unknown",
-            "amount_owed": float(share.amount_owed),
-            "vote_status": share.vote_status.value,
-            "is_paid": share.is_paid,
-        })
+        shares_data.append(
+            {
+                "id": share.id,
+                "expense_id": expense.id,
+                "expense_description": expense.description,
+                "payer": current_user.username,
+                "payee": payee.username if payee else "Unknown",
+                "amount_owed": float(share.amount_owed),
+                "vote_status": share.vote_status.value,
+                "is_paid": share.is_paid,
+            }
+        )
 
     # Add shares where user is owed money
     for share, expense in shares_as_payee:
         payer = db.query(UserModel).filter(UserModel.id == share.user_id).first()
-        shares_data.append({
-            "id": share.id,
-            "expense_id": expense.id,
-            "expense_description": expense.description,
-            "payer": payer.username if payer else "Unknown",
-            "payee": current_user.username,
-            "amount_owed": float(share.amount_owed),
-            "vote_status": share.vote_status.value,
-            "is_paid": share.is_paid,
-        })
+        shares_data.append(
+            {
+                "id": share.id,
+                "expense_id": expense.id,
+                "expense_description": expense.description,
+                "payer": payer.username if payer else "Unknown",
+                "payee": current_user.username,
+                "amount_owed": float(share.amount_owed),
+                "vote_status": share.vote_status.value,
+                "is_paid": share.is_paid,
+            }
+        )
 
     # Check if there are any outstanding balances
-    has_outstanding = any(
-        h["owed_by_me"] > 0.01 or h["owed_to_me"] > 0.01 for h in households_data
-    )
+    has_outstanding = any(h["owed_by_me"] > 0.01 or h["owed_to_me"] > 0.01 for h in households_data)
 
     response = {
         "households": households_data,

@@ -60,9 +60,7 @@ def _setup_household_and_expense(client, db):
 class TestViewRequestedExpenses:
     """Normal, alternative, and error flows for viewing requested expenses."""
 
-    def test_ID014_view_requested_expenses_lists_pending_shares_for_current_user(
-        self, client, db
-    ):
+    def test_ID014_view_requested_expenses_lists_pending_shares_for_current_user(self, client, db):
         expense_id, _, headers_bob, _ = _setup_household_and_expense(client, db)
 
         resp = client.get("/api/v1/expenses/requested", headers=headers_bob)
@@ -97,9 +95,7 @@ class TestViewRequestedExpenses:
         assert resp.status_code == 200, resp.text
         assert resp.json() == []
 
-    def test_ID014_view_requested_expenses_does_not_return_rejected_shares(
-        self, client, db
-    ):
+    def test_ID014_view_requested_expenses_does_not_return_rejected_shares(self, client, db):
         expense_id, _, headers_bob, _ = _setup_household_and_expense(client, db)
 
         respond = client.post(
@@ -124,9 +120,7 @@ class TestViewRequestedExpenses:
         assert resp.status_code == 200, resp.text
         assert resp.json() == []
 
-    def test_ID014_view_requested_expenses_user_not_in_household_rejected(
-        self, client, db
-    ):
+    def test_ID014_view_requested_expenses_user_not_in_household_rejected(self, client, db):
         _setup_household_and_expense(client, db)
 
         register(
