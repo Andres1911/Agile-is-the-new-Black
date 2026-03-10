@@ -99,7 +99,6 @@ class TestGetExpenseHistory:
         assert exc.value.status_code == status.HTTP_403_FORBIDDEN
         assert "not a member" in exc.value.detail
 
-
     def test_ID008_reject_getting_expense_history_from_nonexisting_household(self, alice):
         """Existence Test: Ensures 404 if the household ID is invalid."""
         db = MagicMock()

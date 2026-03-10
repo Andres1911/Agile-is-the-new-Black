@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.api.auth import get_current_user
 from app.core.invite_codes import generate_unique_invite_code
 from app.db.database import get_db
-from app.models.models import Expense, Household, HouseholdMember, ExpenseShare, VoteStatus
+from app.models.models import Expense, ExpenseShare, Household, HouseholdMember, VoteStatus
 from app.models.models import User as UserModel
 from app.schemas.schemas import Expense as ExpenseSchema
 from app.schemas.schemas import Household as HouseholdSchema
@@ -289,7 +289,7 @@ def simplify_household_debts(
     1. Calculating net balances between members
     2. Identifying and removing circular debts
     3. Identifying and simplifying linear chains
-    
+
     Returns the list of debts that were simplified and remaining debts.
     """
     # 1. Verify user is a member of the household
@@ -320,7 +320,7 @@ def simplify_household_debts(
         .filter(
             Expense.household_id == household.id,
             ExpenseShare.vote_status == VoteStatus.ACCEPTED,
-            ExpenseShare.is_paid == False,
+            ExpenseShare.is_paid.is_(False),
         )
         .all()
     )
@@ -336,7 +336,7 @@ def simplify_household_debts(
     # Start by calculating gross debts
     gross_debts = {}
     debt_to_share = {}  # Track which share corresponds to each debt for later
-    
+
     for share, expense, _ in shares:
         debtor_id = share.user_id
         creditor_id = expense.creator_id
@@ -346,21 +346,21 @@ def simplify_household_debts(
         if key not in gross_debts:
             gross_debts[key] = 0
             debt_to_share[key] = []
-        
+
         gross_debts[key] += amount
         debt_to_share[key].append(share)
 
     # 4. Calculate net debts by offsetting
     # For each pair of users, calculate net flow
     all_users = set()
-    for debtor_id, creditor_id in gross_debts.keys():
+    for debtor_id, creditor_id in gross_debts:
         all_users.add(debtor_id)
         all_users.add(creditor_id)
 
     net_debts = {}
     for (debtor_id, creditor_id), amount in gross_debts.items():
         reverse_key = (creditor_id, debtor_id)
-        
+
         if reverse_key in gross_debts:
             # Both directions exist - net them out
             reverse_amount = gross_debts[reverse_key]
@@ -393,25 +393,25 @@ def simplify_household_debts(
             if debtor not in adj:
                 adj[debtor] = []
             adj[debtor].append(creditor)
-        
+
         # Try to find a cycle using DFS from each node
         def find_cycle_from(start):
             """Use DFS to find a cycle starting from 'start'."""
             stack = [(start, [start])]  # (current_node, path)
-            
+
             while stack:
                 node, path = stack.pop()
-                
+
                 if node in adj:
                     for neighbor in adj[node]:
                         if neighbor == start and len(path) > 1:
                             # Found a cycle!
-                            return path + [start]
+                            return [*path, start]
                         elif neighbor not in path:
-                            stack.append((neighbor, path + [neighbor]))
-            
+                            stack.append((neighbor, [*path, neighbor]))
+
             return None
-        
+
         # Try to find a cycle from each node
         for start_node in adj:
             cycle = find_cycle_from(start_node)
@@ -419,35 +419,37 @@ def simplify_household_debts(
                 # Found a cycle [A, B, C, A, ...]
                 # Remove the duplicate last element
                 cycle = cycle[:-1]
-                
+
                 # Calculate minimum amount in this cycle
-                min_amount = float('inf')
+                min_amount = float("inf")
                 for i in range(len(cycle)):
                     u1 = cycle[i]
                     u2 = cycle[(i + 1) % len(cycle)]
                     if (u1, u2) in remaining_debts:
                         min_amount = min(min_amount, remaining_debts[(u1, u2)])
-                
+
                 if min_amount > 0:
                     # Reduce all edges in the cycle by min_amount
                     for i in range(len(cycle)):
                         u1 = cycle[i]
                         u2 = cycle[(i + 1) % len(cycle)]
                         key = (u1, u2)
-                        
+
                         remaining_debts[key] -= min_amount
                         if remaining_debts[key] <= 0.001:
                             del remaining_debts[key]
-                        
-                        simplified_debts.append({
-                            "debtor_id": u1,
-                            "creditor_id": u2,
-                            "amount": min_amount,
-                        })
-                    
+
+                        simplified_debts.append(
+                            {
+                                "debtor_id": u1,
+                                "creditor_id": u2,
+                                "amount": min_amount,
+                            }
+                        )
+
                     offset_total += min_amount
                     return True
-        
+
         return False
 
     # Keep finding and removing cycles until none remain
@@ -461,7 +463,7 @@ def simplify_household_debts(
         chain_changed = False
         debts_to_remove = []
         debts_to_add = {}
-        
+
         # For each debt A→B
         for (a, b), amount_ab in list(remaining_debts.items()):
             # Check if B has an outgoing debt to C with the same amount
@@ -470,32 +472,34 @@ def simplify_household_debts(
                     # Found a chain: A→B→C with same amount
                     # Create direct debt A→C
                     direct_key = (a, c)
-                    
+
                     if direct_key not in remaining_debts and direct_key not in debts_to_add:
                         # Mark intermediate debts for removal
                         debts_to_remove.append((a, b))
                         debts_to_remove.append((b, c))
-                        
+
                         # Add direct debt
                         debts_to_add[direct_key] = amount_ab
                         chain_changed = True
-        
+
         # Apply the changes
         for key in debts_to_remove:
             if key in remaining_debts:
                 del remaining_debts[key]
                 # Track this as a simplified debt
                 debts_fully_simplified.add(key)
-        
+
         for key, amount in debts_to_add.items():
             remaining_debts[key] = amount
             # Record this as a new debt created by simplification
             debtor_id, creditor_id = key
-            simplified_debts.append({
-                "debtor_id": debtor_id,
-                "creditor_id": creditor_id,
-                "amount": amount,
-            })
+            simplified_debts.append(
+                {
+                    "debtor_id": debtor_id,
+                    "creditor_id": creditor_id,
+                    "amount": amount,
+                }
+            )
 
     # Now determine which debts were fully simplified by comparing original vs remaining
     for debt_key in original_remaining:
@@ -506,16 +510,16 @@ def simplify_household_debts(
     # 6. Update the database: mark shares as paid and update amounts as needed
     # For each debt, check if its amount changed
     debt_changes = {}  # {(debtor_id, creditor_id): (original_amount, remaining_amount)}
-    
+
     for debt_key, original_amount in original_remaining.items():
         remaining_amount = remaining_debts.get(debt_key, 0)
         if remaining_amount != original_amount:
             debt_changes[debt_key] = (original_amount, remaining_amount)
-    
+
     # For each debt that changed, mark old shares as paid and create new ones if needed
-    for debt_key, (original_amount, remaining_amount) in debt_changes.items():
+    for debt_key, (_original_amount, remaining_amount) in debt_changes.items():
         debtor_id, creditor_id = debt_key
-        
+
         # Find all shares for this debt and mark them as paid
         shares_to_mark = (
             db.query(ExpenseShare)
@@ -524,19 +528,19 @@ def simplify_household_debts(
                 Expense.household_id == household.id,
                 Expense.creator_id == creditor_id,
                 ExpenseShare.user_id == debtor_id,
-                ExpenseShare.is_paid == False,
+                ExpenseShare.is_paid.is_(False),
             )
             .all()
         )
         for share in shares_to_mark:
             share.is_paid = True
             share.paid_amount = share.amount_owed
-        
+
         # If there's a remaining amount, create a new share for it
         if remaining_amount > 0.001:
             payer = db.query(UserModel).filter(UserModel.id == debtor_id).first()
             payee = db.query(UserModel).filter(UserModel.id == creditor_id).first()
-            
+
             new_expense = Expense(
                 household_id=household.id,
                 creator_id=creditor_id,
@@ -555,14 +559,14 @@ def simplify_household_debts(
                 vote_status=VoteStatus.ACCEPTED,
             )
             db.add(new_share)
-    
+
     # Handle any remaining debts that are new (created by chain simplification)
     for (debtor_id, creditor_id), amount in remaining_debts.items():
         if (debtor_id, creditor_id) not in original_remaining:
             # This is a new debt created by simplification (e.g., chain reduction)
             payer = db.query(UserModel).filter(UserModel.id == debtor_id).first()
             payee = db.query(UserModel).filter(UserModel.id == creditor_id).first()
-            
+
             new_expense = Expense(
                 household_id=household.id,
                 creator_id=creditor_id,
@@ -608,4 +612,3 @@ def simplify_household_debts(
             for (debtor_id, creditor_id), amount in remaining_debts.items()
         ],
     }
-

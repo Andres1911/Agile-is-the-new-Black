@@ -40,7 +40,9 @@ class TestCreateHousehold:
         assert membership.is_admin is True
         db.close()
 
-    def test_ID003_User_successfully_creates_household_after_leaving_previous_household(self, client):
+    def test_ID003_User_successfully_creates_household_after_leaving_previous_household(
+        self, client
+    ):
         register(client, username="leaver", email="leaver@test.com")
         auth_resp = login(client, username="leaver")
         headers = {"Authorization": f"Bearer {auth_resp.json()['access_token']}"}

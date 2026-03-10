@@ -155,6 +155,21 @@ class OutstandingExpense(BaseModel):
     outstanding_amount: float
 
 
+class RequestedExpense(BaseModel):
+    """Represents an expense share awaiting the current user's approval."""
+
+    expense_id: int
+    description: str
+    category: str | None = None
+    date: datetime
+    household_id: int
+    creator_id: int
+    creator_username: str
+    amount_total: float
+    amount_requested: float
+    vote_status: VoteStatus
+
+
 class ManualShare(BaseModel):
     user_id: int
     amount: float
