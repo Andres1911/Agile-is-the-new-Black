@@ -7,8 +7,6 @@ from app.models.models import Expense, ExpenseShare, Household, HouseholdMember,
 from tests.conftest import login
 from tests.conftest import register as register_user
 
-
-
 scenarios("features/ID009_View_Outstanding_Expenses.feature")
 
 
@@ -169,7 +167,7 @@ def given_all_shares_paid(db, username, hh_name):
     for s in payer_shares:
         s.is_paid = True
         s.paid_amount = s.amount_owed
-    
+
     # Mark all shares where user is the payee (expense creator)
     payee_shares = (
         db.query(ExpenseShare)
@@ -180,7 +178,7 @@ def given_all_shares_paid(db, username, hh_name):
     for s in payee_shares:
         s.is_paid = True
         s.paid_amount = s.amount_owed
-    
+
     db.commit()
 
 

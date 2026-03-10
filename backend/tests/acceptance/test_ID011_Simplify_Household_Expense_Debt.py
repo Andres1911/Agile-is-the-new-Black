@@ -10,8 +10,6 @@ from app.models.models import (
     User,
     VoteStatus,
 )
-from tests.conftest import login as _login_helper
-from tests.conftest import register as _register_helper
 
 # Link to the feature file
 scenarios("features/ID011_Simplify_Household_Expense_Debt.feature")
@@ -164,7 +162,7 @@ def given_net_debts_exist(db, datatable, context):
 )
 def given_user_authenticated(db, username, context):
     from app.core.security import create_access_token
-    
+
     # Generate token directly without HTTP call
     token = create_access_token(data={"sub": username})
     context["auth_headers"] = {"Authorization": f"Bearer {token}"}
@@ -185,8 +183,8 @@ def given_no_debts(db, context):
 )
 def given_user_not_a_member(client, db, username, household_name, context):
     # Create user directly in DB and generate token
-    from app.core.security import get_password_hash, create_access_token
-    
+    from app.core.security import create_access_token, get_password_hash
+
     user = _get_user(db, username)
     if not user:
         user = User(
@@ -197,7 +195,7 @@ def given_user_not_a_member(client, db, username, household_name, context):
         )
         db.add(user)
         db.flush()
-    
+
     # Create token directly without HTTP call
     token = create_access_token(data={"sub": username})
     context["auth_headers"] = {"Authorization": f"Bearer {token}"}

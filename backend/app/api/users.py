@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 
 from app.api.auth import get_current_user
 from app.db.database import get_db
-from app.models.models import Expense, ExpenseShare, HouseholdMember, User as UserModel, VoteStatus
+from app.models.models import Expense, ExpenseShare, HouseholdMember, VoteStatus
+from app.models.models import User as UserModel
 
 router = APIRouter()
 
@@ -60,7 +61,7 @@ def get_user_balances(
     households_data = []
     for hm in household_memberships:
         hh = hm.household
-        
+
         # Get shares where user owes money (is payer)
         owed_by_me = (
             db.query(ExpenseShare)
@@ -123,7 +124,7 @@ def get_user_balances(
     )
 
     shares_data = []
-    
+
     # Add shares where user owes money
     for share, expense in shares_as_payer:
         payee = db.query(UserModel).filter(UserModel.id == expense.creator_id).first()
@@ -156,12 +157,12 @@ def get_user_balances(
     has_outstanding = any(
         h["owed_by_me"] > 0.01 or h["owed_to_me"] > 0.01 for h in households_data
     )
-    
+
     response = {
         "households": households_data,
         "shares": shares_data,
     }
-    
+
     # Add message if no outstanding balances
     if not has_outstanding:
         response["detail"] = "No outstanding balances"
