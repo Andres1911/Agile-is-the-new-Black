@@ -1,5 +1,3 @@
-
-
 def simplify_debt(debt: dict) -> dict:
     """
     Simplify the debt by removing cycles.

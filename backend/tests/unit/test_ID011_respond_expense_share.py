@@ -85,7 +85,9 @@ class TestRespondExpenseShareSuccess:
         # Cara is still pending, so expense should remain pending
         assert expense.status == ExpenseStatus.PENDING
 
-    def test_ID011_participant_declines_expense_share_and_expense_becomes_disputed(self, client, db):
+    def test_ID011_participant_declines_expense_share_and_expense_becomes_disputed(
+        self, client, db
+    ):
         expense_id, _, headers_bob, _ = _setup_household_and_expense(client, db)
 
         resp = client.post(

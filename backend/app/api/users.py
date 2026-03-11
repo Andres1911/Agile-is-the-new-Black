@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 
 from app.api.auth import get_current_user
 from app.db.database import get_db
-from app.models.models import Expense, ExpenseShare, HouseholdMember, User as UserModel, VoteStatus
+from app.models.models import Expense, ExpenseShare, HouseholdMember, VoteStatus
+from app.models.models import User as UserModel
 
 router = APIRouter()
 
@@ -16,7 +17,7 @@ def get_user_balances(
 ):
     """
     Get outstanding balances for the current user across all their households.
-    
+
     Returns:
     {
         "households": [
@@ -60,7 +61,7 @@ def get_user_balances(
     households_data = []
     for hm in household_memberships:
         hh = hm.household
-        
+
         # Get shares where user owes money (is payer)
         owed_by_me = (
             db.query(ExpenseShare)
@@ -69,7 +70,7 @@ def get_user_balances(
                 Expense.household_id == hh.id,
                 ExpenseShare.user_id == current_user.id,
                 ExpenseShare.vote_status == VoteStatus.ACCEPTED,
-                ExpenseShare.is_paid == False,
+                ExpenseShare.is_paid.is_(False),
             )
             .with_entities(func.sum(ExpenseShare.amount_owed))
             .scalar()
@@ -83,18 +84,20 @@ def get_user_balances(
                 Expense.household_id == hh.id,
                 Expense.creator_id == current_user.id,
                 ExpenseShare.vote_status == VoteStatus.ACCEPTED,
-                ExpenseShare.is_paid == False,
+                ExpenseShare.is_paid.is_(False),
             )
             .with_entities(func.sum(ExpenseShare.amount_owed))
             .scalar()
         ) or 0.0
 
-        households_data.append({
-            "id": hh.id,
-            "name": hh.name,
-            "owed_by_me": float(owed_by_me),
-            "owed_to_me": float(owed_to_me),
-        })
+        households_data.append(
+            {
+                "id": hh.id,
+                "name": hh.name,
+                "owed_by_me": float(owed_by_me),
+                "owed_to_me": float(owed_to_me),
+            }
+        )
 
     # Get all unpaid, accepted shares for the user across all their households
     # (both as payer and payee)
@@ -105,7 +108,7 @@ def get_user_balances(
             Expense.household_id.in_(household_ids),
             ExpenseShare.user_id == current_user.id,
             ExpenseShare.vote_status == VoteStatus.ACCEPTED,
-            ExpenseShare.is_paid == False,
+            ExpenseShare.is_paid.is_(False),
         )
         .all()
     )
@@ -117,51 +120,53 @@ def get_user_balances(
             Expense.household_id.in_(household_ids),
             Expense.creator_id == current_user.id,
             ExpenseShare.vote_status == VoteStatus.ACCEPTED,
-            ExpenseShare.is_paid == False,
+            ExpenseShare.is_paid.is_(False),
         )
         .all()
     )
 
     shares_data = []
-    
+
     # Add shares where user owes money
     for share, expense in shares_as_payer:
         payee = db.query(UserModel).filter(UserModel.id == expense.creator_id).first()
-        shares_data.append({
-            "id": share.id,
-            "expense_id": expense.id,
-            "expense_description": expense.description,
-            "payer": current_user.username,
-            "payee": payee.username if payee else "Unknown",
-            "amount_owed": float(share.amount_owed),
-            "vote_status": share.vote_status.value,
-            "is_paid": share.is_paid,
-        })
+        shares_data.append(
+            {
+                "id": share.id,
+                "expense_id": expense.id,
+                "expense_description": expense.description,
+                "payer": current_user.username,
+                "payee": payee.username if payee else "Unknown",
+                "amount_owed": float(share.amount_owed),
+                "vote_status": share.vote_status.value,
+                "is_paid": share.is_paid,
+            }
+        )
 
     # Add shares where user is owed money
     for share, expense in shares_as_payee:
         payer = db.query(UserModel).filter(UserModel.id == share.user_id).first()
-        shares_data.append({
-            "id": share.id,
-            "expense_id": expense.id,
-            "expense_description": expense.description,
-            "payer": payer.username if payer else "Unknown",
-            "payee": current_user.username,
-            "amount_owed": float(share.amount_owed),
-            "vote_status": share.vote_status.value,
-            "is_paid": share.is_paid,
-        })
+        shares_data.append(
+            {
+                "id": share.id,
+                "expense_id": expense.id,
+                "expense_description": expense.description,
+                "payer": payer.username if payer else "Unknown",
+                "payee": current_user.username,
+                "amount_owed": float(share.amount_owed),
+                "vote_status": share.vote_status.value,
+                "is_paid": share.is_paid,
+            }
+        )
 
     # Check if there are any outstanding balances
-    has_outstanding = any(
-        h["owed_by_me"] > 0.01 or h["owed_to_me"] > 0.01 for h in households_data
-    )
-    
+    has_outstanding = any(h["owed_by_me"] > 0.01 or h["owed_to_me"] > 0.01 for h in households_data)
+
     response = {
         "households": households_data,
         "shares": shares_data,
     }
-    
+
     # Add message if no outstanding balances
     if not has_outstanding:
         response["detail"] = "No outstanding balances"

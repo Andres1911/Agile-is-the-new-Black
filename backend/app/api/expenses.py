@@ -16,6 +16,7 @@ from app.schemas.schemas import (
     ConfirmPaymentRequest,
     ExpenseCreate,
     OutstandingExpense,
+    RequestedExpense,
     RespondExpenseShareRequest,
 )
 
@@ -72,6 +73,61 @@ def get_outstanding_expenses(
                 amount_owed=float(share.amount_owed),
                 paid_amount=float(share.paid_amount),
                 outstanding_amount=outstanding,
+            )
+        )
+
+    return result
+
+
+@router.get("/requested", response_model=list[RequestedExpense])
+def get_requested_expenses(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return all expense shares awaiting the current user's approval."""
+
+    membership = (
+        db.query(HouseholdMember)
+        .filter(
+            HouseholdMember.user_id == current_user.id,
+            HouseholdMember.left_at.is_(None),
+        )
+        .first()
+    )
+    if not membership:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot view requested expenses: You are not a member of any household",
+        )
+
+    rows = (
+        db.query(Expense, ExpenseShare, User)
+        .join(ExpenseShare, ExpenseShare.expense_id == Expense.id)
+        .join(User, User.id == Expense.creator_id)
+        .filter(
+            Expense.household_id == membership.household_id,
+            ExpenseShare.user_id == current_user.id,
+            ExpenseShare.vote_status == VoteStatus.PENDING,
+            ExpenseShare.is_paid.is_(False),
+        )
+        .order_by(Expense.date.desc())
+        .all()
+    )
+
+    result: list[RequestedExpense] = []
+    for expense, share, creator in rows:
+        result.append(
+            RequestedExpense(
+                expense_id=expense.id,
+                description=expense.description,
+                category=expense.category,
+                date=expense.date,
+                household_id=expense.household_id,
+                creator_id=expense.creator_id,
+                creator_username=creator.username,
+                amount_total=float(expense.amount),
+                amount_requested=float(share.amount_owed),
+                vote_status=share.vote_status,
             )
         )
 
