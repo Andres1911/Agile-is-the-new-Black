@@ -400,3 +400,32 @@ def confirm_payment(
 
     db.commit()
     return {"detail": "Payment recorded"}
+
+def verify_and_modify_expense(
+    expense: ExpenseCreate, 
+    change_amount: bool, 
+    amount: float, 
+    description: str, 
+    category: str | None
+) -> ExpenseCreate:
+    """
+    Updates an expense object based on conditional flags and new values.
+    Validates that the amount is positive if a change is requested.
+    """
+    # Prepare the update dictionary with mandatory updates
+    update_data = {
+        "description": description,
+        "category": category
+    }
+
+    # Add amount to update dictionary only if change_amount is True
+    if change_amount:
+        # Validation for ID013 Error Flow
+        if amount <= 0:
+            raise ValueError("Invalid amount: Amount must be a positive number")
+        
+        update_data["amount"] = amount
+
+    # Create a new instance with the updated values
+    # Pydantic's model_copy will preserve all other fields like split_evenly
+    return expense.model_copy(update=update_data)
