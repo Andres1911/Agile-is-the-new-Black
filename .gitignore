@@ -297,7 +297,7 @@ expense_tracker.db
 .claude/
 
 # macOS platform generated files
-**/macos/Flutter/GeneratedPluginRegistrant.swift
+frontend/macos/
 **/macos/Flutter/ephemeral/
 **/macos/Pods/
 **/macos/.symlinks/
