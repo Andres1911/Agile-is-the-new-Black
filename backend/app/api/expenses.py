@@ -1,5 +1,5 @@
-# Expenses API — create-and-split + confirm-payment (ID010)
-from fastapi import APIRouter, Depends, HTTPException
+# Expenses API — create-and-split + confirm-payment (ID010) + scan-receipt (ID012)
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.api.auth import get_current_user
@@ -19,6 +19,7 @@ from app.schemas.schemas import (
     RequestedExpense,
     RespondExpenseShareRequest,
 )
+from app.services.receipt_parser import parse_receipt, validate_file_extension
 
 router = APIRouter()
 
@@ -400,6 +401,64 @@ def confirm_payment(
 
     db.commit()
     return {"detail": "Payment recorded"}
+
+
+@router.post("/scan-receipt", status_code=200)
+async def scan_receipt(
+    file: UploadFile,
+    current_user: User = Depends(get_current_user),
+):
+    """Accept a receipt image and return parsed date, total, and line items (ID012)."""
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No file provided")
+
+    ext = validate_file_extension(file.filename)
+    if ext is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported file format. Please upload a JPG, PNG, or HEIC image",
+        )
+
+    contents = await file.read()
+    if len(contents) == 0:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+
+    if len(contents) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large. Maximum size is 10 MB")
+
+    try:
+        result = parse_receipt(contents)
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+    except Exception:
+        raise HTTPException(
+            status_code=500, detail="Failed to process the receipt image"
+        ) from None
+
+    if not result["success"]:
+        if result.get("error") == "no_receipt":
+            raise HTTPException(
+                status_code=422,
+                detail="No receipt detected in the image. Please upload a clear photo of a receipt",
+            )
+        raise HTTPException(status_code=422, detail="Could not parse the receipt")
+
+    message = "Receipt scanned successfully"
+    if result.get("partial"):
+        missing = result.get("warnings", [])
+        if "items" in missing:
+            message = "No individual items detected. Please add items manually"
+        else:
+            message = (
+                "Some values could not be read. Please review and complete the missing fields"
+            )
+
+    return {
+        "date": result.get("date"),
+        "totalAmount": result.get("totalAmount"),
+        "items": result.get("items", []),
+        "message": message,
+    }
 
 
 def verify_and_modify_expense(

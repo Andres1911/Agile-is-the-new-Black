@@ -27,6 +27,12 @@ dependencies:
   # Date formatting
   intl: ^0.18.1
 
+  # Image picker for camera/gallery
+  image_picker: ^1.0.7
+
+  # MIME type detection
+  mime: ^1.0.5
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

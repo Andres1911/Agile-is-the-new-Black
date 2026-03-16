@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -322,4 +323,23 @@ class ApiService {
 
   // ------------------------------------------------------------------------------
 
+  Future<Map<String, dynamic>> scanReceipt(File imageFile) async {
+    await _loadToken();
+    final uri = Uri.parse('$baseUrl/expenses/scan-receipt');
+    final request = http.MultipartRequest('POST', uri);
+    if (_token != null) {
+      request.headers['Authorization'] = 'Bearer $_token';
+    }
+    request.files.add(
+      await http.MultipartFile.fromPath('file', imageFile.path),
+    );
+    final streamed = await request.send();
+    final body = await streamed.stream.bytesToString();
+    if (streamed.statusCode == 200) {
+      return jsonDecode(body) as Map<String, dynamic>;
+    } else {
+      final error = jsonDecode(body);
+      throw Exception(error['detail'] ?? 'Failed to scan receipt');
+    }
+  }
 }
