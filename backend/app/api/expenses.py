@@ -431,9 +431,7 @@ async def scan_receipt(
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
     except Exception:
-        raise HTTPException(
-            status_code=500, detail="Failed to process the receipt image"
-        ) from None
+        raise HTTPException(status_code=500, detail="Failed to process the receipt image") from None
 
     if not result["success"]:
         if result.get("error") == "no_receipt":
@@ -449,9 +447,7 @@ async def scan_receipt(
         if "items" in missing:
             message = "No individual items detected. Please add items manually"
         else:
-            message = (
-                "Some values could not be read. Please review and complete the missing fields"
-            )
+            message = "Some values could not be read. Please review and complete the missing fields"
 
     return {
         "date": result.get("date"),

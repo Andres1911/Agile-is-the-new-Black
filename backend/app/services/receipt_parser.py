@@ -25,14 +25,29 @@ TOTAL_PATTERNS = [
     r"\$\s*([\d]+[.,]\d{2})\s*$",
 ]
 
-ITEM_PATTERN = re.compile(
-    r"^(.+?)\s+\$?\s*([\d]+[.,]\d{2})\s*$", re.MULTILINE
-)
+ITEM_PATTERN = re.compile(r"^(.+?)\s+\$?\s*([\d]+[.,]\d{2})\s*$", re.MULTILINE)
 
 SKIP_KEYWORDS = {
-    "total", "subtotal", "sub-total", "tax", "tip", "change", "cash",
-    "credit", "debit", "visa", "mastercard", "amex", "balance",
-    "amount due", "grand total", "discount", "savings", "hst", "gst", "pst",
+    "total",
+    "subtotal",
+    "sub-total",
+    "tax",
+    "tip",
+    "change",
+    "cash",
+    "credit",
+    "debit",
+    "visa",
+    "mastercard",
+    "amex",
+    "balance",
+    "amount due",
+    "grand total",
+    "discount",
+    "savings",
+    "hst",
+    "gst",
+    "pst",
 }
 
 
@@ -60,11 +75,25 @@ def parse_date(text: str) -> str | None:
         match = re.search(pattern, text)
         if match:
             raw = match.group(1)
-            for fmt in ("%Y-%m-%d", "%Y/%m/%d", "%m/%d/%Y", "%m-%d-%Y",
-                        "%m/%d/%y", "%m-%d-%y", "%B %d, %Y", "%B %d %Y",
-                        "%b %d, %Y", "%b %d %Y"):
+            for fmt in (
+                "%Y-%m-%d",
+                "%Y/%m/%d",
+                "%m/%d/%Y",
+                "%m-%d-%Y",
+                "%m/%d/%y",
+                "%m-%d-%y",
+                "%B %d, %Y",
+                "%B %d %Y",
+                "%b %d, %Y",
+                "%b %d %Y",
+            ):
                 try:
-                    dt = datetime.strptime(raw.replace(",", ", ") if "," not in raw and any(c.isalpha() for c in raw) else raw, fmt)
+                    dt = datetime.strptime(
+                        raw.replace(",", ", ")
+                        if "," not in raw and any(c.isalpha() for c in raw)
+                        else raw,
+                        fmt,
+                    )
                     return dt.strftime("%Y-%m-%d")
                 except ValueError:
                     continue
