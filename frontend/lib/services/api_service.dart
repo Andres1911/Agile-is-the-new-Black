@@ -306,8 +306,27 @@ class ApiService {
     }
   }
 
+  Future<void> payExpenseShare(int expenseId, double amount) async {
+    await _loadToken();
+
+    if (_token == null) {
+      throw Exception("User not authenticated. Please log in again.");
+    }
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/expenses/$expenseId/confirm-payment'),
+      headers: _getHeaders(),
+      body: jsonEncode({'amount': amount}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to process payment: ${response.body}');
+    }
+  }
+
   Future<List<dynamic>> getOutstandingExpenses() async {
     await _loadToken();
+
     final response = await http.get(
       Uri.parse('$baseUrl/expenses/outstanding'),
       headers: _getHeaders(),
