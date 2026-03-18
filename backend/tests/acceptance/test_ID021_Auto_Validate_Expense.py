@@ -113,7 +113,10 @@ def step_login(client, username, context):
 # ── WHEN steps ────────────────────────────────────────────────────────────
 
 
-@when(parsers.parse('"{member}" accepts the expense share for "{description}"'), target_fixture="context")
+@when(
+    parsers.parse('"{member}" accepts the expense share for "{description}"'),
+    target_fixture="context",
+)
 def member_accepts(client, db, member, description, context):
     auth_resp = login(client, username=member, password="Password123!")
     headers = {"Authorization": f"Bearer {auth_resp.json()['access_token']}"}
@@ -125,7 +128,10 @@ def member_accepts(client, db, member, description, context):
     return context
 
 
-@when(parsers.parse('"{member}" changes their vote to accepted for "{description}"'), target_fixture="context")
+@when(
+    parsers.parse('"{member}" changes their vote to accepted for "{description}"'),
+    target_fixture="context",
+)
 def member_changes_vote(client, db, member, description, context):
     auth_resp = login(client, username=member, password="Password123!")
     headers = {"Authorization": f"Bearer {auth_resp.json()['access_token']}"}

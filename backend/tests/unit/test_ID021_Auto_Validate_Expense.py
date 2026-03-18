@@ -13,7 +13,6 @@ def make_share(vote_status: VoteStatus) -> ExpenseShare:
 
 
 class TestAutoValidateExpense:
-
     def test_majority_accepted_finalizes_expense(self):
         """Strictly more than 50% accepted → FINALIZED."""
         shares = [
