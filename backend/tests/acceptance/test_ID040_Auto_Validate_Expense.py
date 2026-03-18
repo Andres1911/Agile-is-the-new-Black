@@ -13,7 +13,7 @@ from app.models.models import User as UserModel
 from tests.conftest import login
 from tests.conftest import register as register_user
 
-scenarios("features/ID021_Auto_Validate_Expense.feature")
+scenarios("features/ID040_Auto_Validate_Expense.feature")
 
 
 @pytest.fixture()
