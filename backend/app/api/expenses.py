@@ -318,14 +318,7 @@ def respond_expense_share(
         response_message = "Expense share declined"
 
     all_shares = db.query(ExpenseShare).filter(ExpenseShare.expense_id == expense_id).all()
-
-    if any(s.vote_status == VoteStatus.REJECTED for s in all_shares):
-        expense.status = ExpenseStatus.DISPUTED
-    elif all(s.vote_status == VoteStatus.ACCEPTED for s in all_shares):
-        expense.status = ExpenseStatus.FINALIZED
-    else:
-        expense.status = ExpenseStatus.PENDING
-
+    expense.status = compute_expense_status(all_shares)
     db.commit()
     return {"detail": response_message}
 
@@ -482,3 +475,15 @@ def verify_and_modify_expense(
     # Create a new instance with the updated values
     # Pydantic's model_copy will preserve all other fields like split_evenly
     return expense.model_copy(update=update_data)
+
+
+# In a services file or at the top of expenses.py
+def compute_expense_status(shares: list[ExpenseShare]) -> ExpenseStatus:
+    accepted_count = sum(1 for s in shares if s.vote_status == VoteStatus.ACCEPTED)
+    total_count = len(shares)
+    if accepted_count / total_count > 0.5:
+        return ExpenseStatus.FINALIZED
+    elif any(s.vote_status == VoteStatus.REJECTED for s in shares):
+        return ExpenseStatus.DISPUTED
+    else:
+        return ExpenseStatus.PENDING
