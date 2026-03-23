@@ -361,4 +361,37 @@ class ApiService {
       throw Exception(error['detail'] ?? 'Failed to scan receipt');
     }
   }
+
+  Future<List<dynamic>> getRequestedExpenses() async {
+    await _loadToken();
+    final response = await http.get(
+      Uri.parse('$baseUrl/expenses/requested'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as List<dynamic>;
+    } else {
+      throw Exception('Failed to load requested expenses: ${response.body}');
+    }
+  }
+
+  Future<String> respondToExpenseShare(int expenseId, String decision) async {
+    await _loadToken();
+    final response = await http.post(
+      Uri.parse('$baseUrl/expenses/$expenseId/respond-share'),
+      headers: _getHeaders(),
+      body: jsonEncode({'decision': decision}),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['detail'] as String;
+    } else {
+      final error = jsonDecode(response.body);
+      throw Exception(error['detail'] ?? 'Failed to respond to expense share');
+    }
+  }
 }
+
+  
