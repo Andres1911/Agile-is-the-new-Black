@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ApiService {
   // Change this to your backend URL in production
   static const String baseUrl = 'http://localhost:8000/api/v1';
-  
+
   String? _token;
 
   Future<void> _loadToken() async {
@@ -27,12 +27,14 @@ class ApiService {
   }
 
   Map<String, String> _getHeaders() {
-    final headers = {
+    final headers = <String, String>{
       'Content-Type': 'application/json',
     };
+
     if (_token != null) {
       headers['Authorization'] = 'Bearer $_token';
     }
+
     return headers;
   }
 
@@ -44,6 +46,7 @@ class ApiService {
     String? fullName,
   ) async {
     await _loadToken();
+
     final response = await http.post(
       Uri.parse('$baseUrl/auth/register'),
       headers: _getHeaders(),
@@ -56,7 +59,7 @@ class ApiService {
     );
 
     if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+      return jsonDecode(response.body) as Map<String, dynamic>;
     } else {
       throw Exception('Failed to register: ${response.body}');
     }
@@ -73,8 +76,8 @@ class ApiService {
     );
 
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final token = data['access_token'];
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final token = data['access_token'] as String;
       await _saveToken(token);
       return token;
     } else {
@@ -84,13 +87,14 @@ class ApiService {
 
   Future<Map<String, dynamic>> getCurrentUser() async {
     await _loadToken();
+
     final response = await http.get(
       Uri.parse('$baseUrl/auth/me'),
       headers: _getHeaders(),
     );
 
     if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+      return jsonDecode(response.body) as Map<String, dynamic>;
     } else {
       throw Exception('Failed to get user: ${response.body}');
     }
@@ -99,20 +103,24 @@ class ApiService {
   // Expense endpoints
   Future<List<dynamic>> getExpenses() async {
     await _loadToken();
+
     final response = await http.get(
       Uri.parse('$baseUrl/expenses/'),
       headers: _getHeaders(),
     );
 
     if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+      return jsonDecode(response.body) as List<dynamic>;
     } else {
       throw Exception('Failed to get expenses: ${response.body}');
     }
   }
 
-  Future<Map<String, dynamic>> createExpense(Map<String, dynamic> expense) async {
+  Future<Map<String, dynamic>> createExpense(
+    Map<String, dynamic> expense,
+  ) async {
     await _loadToken();
+
     final response = await http.post(
       Uri.parse('$baseUrl/expenses/'),
       headers: _getHeaders(),
@@ -120,14 +128,18 @@ class ApiService {
     );
 
     if (response.statusCode == 201) {
-      return jsonDecode(response.body);
+      return jsonDecode(response.body) as Map<String, dynamic>;
     } else {
       throw Exception('Failed to create expense: ${response.body}');
     }
   }
 
-  Future<Map<String, dynamic>> updateExpense(int id, Map<String, dynamic> expense) async {
+  Future<Map<String, dynamic>> updateExpense(
+    int id,
+    Map<String, dynamic> expense,
+  ) async {
     await _loadToken();
+
     final response = await http.put(
       Uri.parse('$baseUrl/expenses/$id'),
       headers: _getHeaders(),
@@ -135,7 +147,7 @@ class ApiService {
     );
 
     if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+      return jsonDecode(response.body) as Map<String, dynamic>;
     } else {
       throw Exception('Failed to update expense: ${response.body}');
     }
@@ -143,6 +155,7 @@ class ApiService {
 
   Future<void> deleteExpense(int id) async {
     await _loadToken();
+
     final response = await http.delete(
       Uri.parse('$baseUrl/expenses/$id'),
       headers: _getHeaders(),
@@ -155,131 +168,22 @@ class ApiService {
 
   Future<List<dynamic>> getHouseholdExpenses(int householdId) async {
     await _loadToken();
+
     final response = await http.get(
       Uri.parse('$baseUrl/households/$householdId/expenses'),
       headers: _getHeaders(),
     );
 
     if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+      return jsonDecode(response.body) as List<dynamic>;
     } else {
       throw Exception('Failed to get household expenses: ${response.body}');
     }
   }
 
-  // Household endpoints
-  Future<Map<String, dynamic>?> getMyHousehold() async {
-    await _loadToken();
-    final response = await http.get(
-      Uri.parse('$baseUrl/households/me'),
-      headers: _getHeaders(),
-    );
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else if (response.statusCode == 404) {
-      return null;
-    } else {
-      throw Exception('Failed to get household: ${response.body}');
-    }
-  }
-
-  Future<Map<String, dynamic>> createHousehold(Map<String, dynamic> household) async {
-    await _loadToken();
-    final response = await http.post(
-      Uri.parse('$baseUrl/households/'),
-      headers: _getHeaders(),
-      body: jsonEncode(household),
-    );
-
-    if (response.statusCode == 201) {
-      return jsonDecode(response.body);
-    } else {
-      try {
-        final error = jsonDecode(response.body);
-        String message = 'Failed to create household';
-
-        // Handle common FastAPI error formats
-        if (error is Map<String, dynamic>) {
-          final detail = error['detail'];
-          if (detail is String && detail.isNotEmpty) {
-            message = detail;
-          } else if (detail is List && detail.isNotEmpty) {
-            final first = detail.first;
-            if (first is Map<String, dynamic> && first['msg'] is String && (first['msg'] as String).isNotEmpty) {
-              message = first['msg'] as String;
-            } else {
-              // Fall back to a serialized representation of the detail list
-              message = jsonEncode(detail);
-            }
-          }
-        } else if (error is List && error.isNotEmpty) {
-          final first = error.first;
-          if (first is Map<String, dynamic> && first['msg'] is String && (first['msg'] as String).isNotEmpty) {
-            message = first['msg'] as String;
-          } else {
-            message = jsonEncode(error);
-          }
-        }
-
-        // As a last resort, include the raw response body if available
-        if (message == 'Failed to create household' && response.body.isNotEmpty) {
-          message = 'Failed to create household: ${response.body}';
-        }
-        throw Exception(message);
-      } on FormatException {
-        // Response body was not valid JSON; fall back to a generic message.
-        throw Exception('Failed to create household');
-      }
-    }
-  }
-
-  Future<Map<String, dynamic>> getHousehold(int id) async {
-    await _loadToken();
-    final response = await http.get(
-      Uri.parse('$baseUrl/households/$id'),
-      headers: _getHeaders(),
-    );
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Failed to get household: ${response.body}');
-    }
-  }
-
-  Future<Map<String, dynamic>> addMemberToHousehold(int householdId, int userId) async {
-    await _loadToken();
-    final response = await http.post(
-      Uri.parse('$baseUrl/households/$householdId/members/$userId'),
-      headers: _getHeaders(),
-    );
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Failed to add member: ${response.body}');
-    }
-  }
-
-  Future<Map<String, dynamic>> removeMemberFromHousehold(int householdId, int userId) async {
-    await _loadToken();
-    final response = await http.delete(
-      Uri.parse('$baseUrl/households/$householdId/members/$userId'),
-      headers: _getHeaders(),
-    );
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Failed to remove member: ${response.body}');
-    }
-  }
-
-  // create and split expesne
-  // ------------------------------------------------------------------------------
   Future<void> createAndSplitExpense(Map<String, dynamic> data) async {
-    await _loadToken(); 
+    await _loadToken();
+
     final response = await http.post(
       Uri.parse('$baseUrl/expenses/create-and-split'),
       headers: _getHeaders(),
@@ -292,9 +196,9 @@ class ApiService {
     }
   }
 
-  
   Future<Map<String, dynamic>> fetchActiveMembers() async {
     await _loadToken();
+
     final response = await http.get(
       Uri.parse('$baseUrl/households/me/active-household-members'),
       headers: _getHeaders(),
@@ -311,7 +215,7 @@ class ApiService {
     await _loadToken();
 
     if (_token == null) {
-      throw Exception("User not authenticated. Please log in again.");
+      throw Exception('User not authenticated. Please log in again.');
     }
 
     final response = await http.post(
@@ -340,20 +244,177 @@ class ApiService {
     }
   }
 
-  // ------------------------------------------------------------------------------
+  Future<List<dynamic>> getRequestedExpenses() async {
+    await _loadToken();
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/expenses/requested'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as List<dynamic>;
+    } else {
+      throw Exception('Failed to load requested expenses: ${response.body}');
+    }
+  }
+
+  Future<void> respondToExpenseShare(int expenseId, String decision) async {
+    await _loadToken();
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/expenses/$expenseId/respond-share'),
+      headers: _getHeaders(),
+      body: jsonEncode({'decision': decision}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to respond to expense share: ${response.body}');
+    }
+  }
+
+  // Household endpoints
+  Future<Map<String, dynamic>?> getMyHousehold() async {
+    await _loadToken();
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/households/me'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else if (response.statusCode == 404) {
+      return null;
+    } else {
+      throw Exception('Failed to get household: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> createHousehold(
+    Map<String, dynamic> household,
+  ) async {
+    await _loadToken();
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/households/'),
+      headers: _getHeaders(),
+      body: jsonEncode(household),
+    );
+
+    if (response.statusCode == 201) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      try {
+        final error = jsonDecode(response.body);
+        String message = 'Failed to create household';
+
+        if (error is Map<String, dynamic>) {
+          final detail = error['detail'];
+
+          if (detail is String && detail.isNotEmpty) {
+            message = detail;
+          } else if (detail is List && detail.isNotEmpty) {
+            final first = detail.first;
+            if (first is Map<String, dynamic> &&
+                first['msg'] is String &&
+                (first['msg'] as String).isNotEmpty) {
+              message = first['msg'] as String;
+            } else {
+              message = jsonEncode(detail);
+            }
+          }
+        } else if (error is List && error.isNotEmpty) {
+          final first = error.first;
+          if (first is Map<String, dynamic> &&
+              first['msg'] is String &&
+              (first['msg'] as String).isNotEmpty) {
+            message = first['msg'] as String;
+          } else {
+            message = jsonEncode(error);
+          }
+        }
+
+        if (message == 'Failed to create household' &&
+            response.body.isNotEmpty) {
+          message = 'Failed to create household: ${response.body}';
+        }
+
+        throw Exception(message);
+      } on FormatException {
+        throw Exception('Failed to create household');
+      }
+    }
+  }
+
+  Future<Map<String, dynamic>> getHousehold(int id) async {
+    await _loadToken();
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/households/$id'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Failed to get household: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> addMemberToHousehold(
+    int householdId,
+    int userId,
+  ) async {
+    await _loadToken();
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/households/$householdId/members/$userId'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Failed to add member: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> removeMemberFromHousehold(
+    int householdId,
+    int userId,
+  ) async {
+    await _loadToken();
+
+    final response = await http.delete(
+      Uri.parse('$baseUrl/households/$householdId/members/$userId'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Failed to remove member: ${response.body}');
+    }
+  }
 
   Future<Map<String, dynamic>> scanReceipt(File imageFile) async {
     await _loadToken();
+
     final uri = Uri.parse('$baseUrl/expenses/scan-receipt');
     final request = http.MultipartRequest('POST', uri);
+
     if (_token != null) {
       request.headers['Authorization'] = 'Bearer $_token';
     }
+
     request.files.add(
       await http.MultipartFile.fromPath('file', imageFile.path),
     );
+
     final streamed = await request.send();
     final body = await streamed.stream.bytesToString();
+
     if (streamed.statusCode == 200) {
       return jsonDecode(body) as Map<String, dynamic>;
     } else {
