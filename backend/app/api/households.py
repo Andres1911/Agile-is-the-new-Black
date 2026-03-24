@@ -48,7 +48,20 @@ def get_current_user_active_household_members(
 
     return {
         "household_id": membership.household_id,
-        "members": [{"id": u.id, "username": u.username, "full_name": u.full_name} for u in users],
+        "current_user_id": current_user.id,
+        "current_user_is_admin": membership.is_admin,
+        "members": [
+            {
+                "id": u.id,
+                "username": u.username,
+                "full_name": u.full_name,
+                "is_admin": any(
+                    hm.user_id == u.id and hm.household_id == membership.household_id and hm.left_at is None and hm.is_admin
+                    for hm in u.household_memberships
+                ),
+            }
+            for user in users
+        ],
     }
 
 
