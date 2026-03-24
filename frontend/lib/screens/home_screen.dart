@@ -8,6 +8,7 @@ import 'login_screen.dart';
 import 'pay_expense_screen.dart';
 import 'outstanding_expenses_screen.dart';
 import 'scan_receipt_screen.dart';
+import 'requested_expenses_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,6 +18,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  int _pendingApprovalsCount = 0;
   final _apiService = ApiService();
   List<Expense> _expenses = [];
   Household? _household;
@@ -32,6 +34,15 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadData();
   }
 
+  Future<void> _loadPendingCount() async {
+    try {
+      final raw = await _apiService.getRequestedExpenses();
+      if (!mounted) return;
+      setState(() => _pendingApprovalsCount = raw.length);
+    } catch (_) {
+      // silently fail — badge is non-critical
+    }
+  }
   Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
@@ -76,6 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (error != null) {
         _showError(error);
       }
+      _loadPendingCount();
     }
   }
 
@@ -90,9 +102,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+    if (index == 0 && _pendingApprovalsCount > 0) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const RequestedExpensesScreen(),
+        ),
+      ).then((_) => _loadPendingCount());
+      return;
+    }
+    setState(() => _selectedIndex = index);
   }
 
   void _showError(String message) {
@@ -218,16 +237,20 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
+        items: <BottomNavigationBarItem>[
           BottomNavigationBarItem(
-            icon: Icon(Icons.attach_money),
+            icon: Badge(
+              isLabelVisible: _pendingApprovalsCount > 0,
+              label: Text('$_pendingApprovalsCount'),
+              child: const Icon(Icons.attach_money),
+            ),
             label: 'Expenses',
           ),
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: Icon(Icons.home),
             label: 'Households',
           ),
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: Icon(Icons.person),
             label: 'Profile',
           ),
