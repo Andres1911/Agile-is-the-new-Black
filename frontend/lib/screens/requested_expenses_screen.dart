@@ -315,10 +315,9 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'You do not have any pending expense shares to review right now.',
+              'You have no expense shares awaiting your response.',
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+                  color: theme.colorScheme.onSurfaceVariant),
               textAlign: TextAlign.center,
             ),
           ],
@@ -343,25 +342,19 @@ class _ErrorState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.error_outline,
-              size: 72,
-              color: theme.colorScheme.error,
-            ),
+            Icon(Icons.error_outline, size: 72, color: theme.colorScheme.error),
             const SizedBox(height: 16),
             Text(
-              'Could not load requested expenses',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              'Could not load pending approvals',
+              style: theme.textTheme.titleLarge
+                  ?.copyWith(fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
               message,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+                  color: theme.colorScheme.onSurfaceVariant),
               textAlign: TextAlign.center,
               maxLines: 4,
               overflow: TextOverflow.ellipsis,
