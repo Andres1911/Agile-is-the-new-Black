@@ -63,7 +63,7 @@ def get_current_user_active_household_members(
                     for hm in u.household_memberships
                 ),
             }
-            for user in users
+            for u in users
         ],
     }
 
