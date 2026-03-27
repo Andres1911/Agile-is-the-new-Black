@@ -13,7 +13,7 @@ class RequestedExpense {
   RequestedExpense({
     required this.expenseId,
     required this.description,
-    this.category,
+    required this.category,
     required this.date,
     required this.householdId,
     required this.creatorId,

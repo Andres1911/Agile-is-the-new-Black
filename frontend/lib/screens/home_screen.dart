@@ -9,6 +9,7 @@ import 'pay_expense_screen.dart';
 import 'outstanding_expenses_screen.dart';
 import 'scan_receipt_screen.dart';
 import 'requested_expenses_screen.dart';
+import '../widgets/expense_response_notification_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,11 +21,16 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _pendingApprovalsCount = 0;
   final _apiService = ApiService();
+
   List<Expense> _expenses = [];
   Household? _household;
   User? _currentUser;
+
   bool _isLoading = false;
+  bool _currentUserIsAdmin = false;
+
   int _selectedIndex = 0;
+
   String? _errorBanner;
   bool _showErrorBanner = false;
 
@@ -52,6 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
     User? loadedUser;
     Household? loadedHousehold;
     List<Expense> loadedExpenses = [];
+    bool loadedCurrentUserIsAdmin = false;
     String? error;
 
     try {
@@ -70,6 +77,14 @@ class _HomeScreenState extends State<HomeScreen> {
         } catch (e) {
           debugPrint('Failed to load expenses: $e');
           error = 'Failed to load expenses. Please try again.';
+        }
+
+        try {
+          final activeMembersData = await _apiService.fetchActiveMembers();
+          loadedCurrentUserIsAdmin =
+              activeMembersData['current_user_is_admin'] as bool? ?? false;
+        } catch (e) {
+          debugPrint('Failed to load active members/admin status: $e');
         }
       }
     } catch (e) {
@@ -94,7 +109,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _logout() async {
     await _apiService.clearToken();
     if (!mounted) return;
-    
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => const LoginScreen()),
@@ -119,6 +134,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _errorBanner = message;
       _showErrorBanner = true;
     });
+
     Future.delayed(const Duration(seconds: 5), () {
       if (!mounted) return;
       if (_errorBanner == message) {
@@ -143,6 +159,22 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('Expense Tracker'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.fact_check_outlined),
+            tooltip: 'Requested expenses',
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const RequestedExpensesScreen(),
+                ),
+              );
+
+              if (result == true) {
+                _loadData();
+              }
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.pending_actions_outlined),
             tooltip: 'Outstanding',
@@ -180,8 +212,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Align(
                     alignment: Alignment.topCenter,
                     child: Padding(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 420),
                         child: Material(
@@ -269,7 +303,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     final result = await Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => const AddHouseholdScreen()),
+                        builder: (context) => const AddHouseholdScreen(),
+                      ),
                     );
                     if (result == true) _loadData();
                   },
@@ -288,10 +323,35 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final theme = Theme.of(context);
 
+    final trackedNotifications = _expenses.where((expense) {
+      final status = expense.status;
+      final bool canSeeNotification =
+          expense.creatorId == _currentUser?.id || _currentUserIsAdmin;
+
+      return canSeeNotification &&
+          (status == 'FINALIZED' || status == 'DISPUTED');
+    }).toList();
+
     return ListView.builder(
-      itemCount: _expenses.length,
+      itemCount: trackedNotifications.length + _expenses.length,
       itemBuilder: (context, index) {
-        final expense = _expenses[index];
+        if (index < trackedNotifications.length) {
+          final expense = trackedNotifications[index];
+          final isAccepted = expense.status == 'FINALIZED';
+
+          return ExpenseResponseNotificationCard(
+            title: isAccepted
+                ? 'Expense accepted by majority'
+                : 'Expense needs review',
+            message: isAccepted
+                ? '"${expense.description}" is now finalized after member responses.'
+                : '"${expense.description}" was rejected by at least one member and is now disputed.',
+            isAccepted: isAccepted,
+          );
+        }
+
+        final expense = _expenses[index - trackedNotifications.length];
+
         return Card(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: ListTile(
@@ -317,13 +377,12 @@ class _HomeScreenState extends State<HomeScreen> {
               '${expense.category ?? 'Uncategorized'} - ${expense.date.toString().split(' ')[0]}',
             ),
             trailing: Row(
-              mainAxisSize: MainAxisSize.min, // Crucial: prevents the Row from taking full width
+              mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
                   icon: const Icon(Icons.payment, color: Colors.green),
                   tooltip: 'Pay Share',
                   onPressed: () async {
-                    // 1. Navigate to the Pay Page
                     final result = await Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -331,7 +390,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     );
 
-                    // 2. If the user successfully paid (result is true), refresh the list
                     if (result == true) {
                       _loadData();
                     }
@@ -339,7 +397,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete, color: Colors.grey),
-                  onPressed: () => _deleteExpense(expense.id!),
+                  onPressed: expense.id == null
+                      ? null
+                      : () => _deleteExpense(expense.id!),
                 ),
               ],
             ),
@@ -367,10 +427,10 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Icon(Icons.home),
             ),
             title: Text(household.name),
-            subtitle: Text(household.address ?? household.description ?? 'No description'),
-            trailing: household.inviteCode != null
-                ? Text(household.inviteCode!)
-                : null,
+            subtitle:
+                Text(household.address ?? household.description ?? 'No description'),
+            trailing:
+                household.inviteCode != null ? Text(household.inviteCode!) : null,
           ),
         ),
       ],
@@ -523,7 +583,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _showAddExpenseDialogWithData(
-      BuildContext context, ScannedReceiptData data) async {
+    BuildContext context,
+    ScannedReceiptData data,
+  ) async {
     List<dynamic> activeMembers = [];
     int? householdId;
     int? currentUserId;
@@ -569,43 +631,56 @@ class _HomeScreenState extends State<HomeScreen> {
                       if (data.items.isNotEmpty) ...[
                         const Align(
                           alignment: Alignment.centerLeft,
-                          child: Text('Scanned Items:',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 13)),
+                          child: Text(
+                            'Scanned Items:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 4),
-                        ...data.items.map((item) => Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 2),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(item['item'] as String,
-                                      style: const TextStyle(fontSize: 13)),
-                                  Text(
-                                      '\$${(item['amount'] as double).toStringAsFixed(2)}',
-                                      style: const TextStyle(fontSize: 13)),
-                                ],
-                              ),
-                            )),
+                        ...data.items.map(
+                          (item) => Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  item['item'] as String,
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                                Text(
+                                  '\$${(item['amount'] as double).toStringAsFixed(2)}',
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                         const Divider(height: 20),
                       ],
                       TextField(
                         controller: amountController,
                         decoration: const InputDecoration(
-                            labelText: 'Total Amount', prefixText: '\$ '),
+                          labelText: 'Total Amount',
+                          prefixText: '\$ ',
+                        ),
                         keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
+                          decimal: true,
+                        ),
                       ),
                       TextField(
-                          controller: descriptionController,
-                          decoration:
-                              const InputDecoration(labelText: 'Description')),
+                        controller: descriptionController,
+                        decoration:
+                            const InputDecoration(labelText: 'Description'),
+                      ),
                       TextField(
-                          controller: categoryController,
-                          decoration: const InputDecoration(
-                              labelText: 'Category (Optional)')),
+                        controller: categoryController,
+                        decoration: const InputDecoration(
+                          labelText: 'Category (Optional)',
+                        ),
+                      ),
                       const Divider(height: 30),
                       SwitchListTile(
                         title: const Text('Split Evenly'),
@@ -616,14 +691,17 @@ class _HomeScreenState extends State<HomeScreen> {
                       if (!splitEvenly) ...[
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 8.0),
-                          child: Text("Assign Individual Shares:",
-                              style: TextStyle(fontWeight: FontWeight.bold)),
+                          child: Text(
+                            "Assign Individual Shares:",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
                         ),
                         ...activeMembers.map((member) {
                           final int userId = member['id'];
                           final String name = userId == currentUserId
                               ? "${member['username']} (Me)"
                               : member['username'];
+
                           return Padding(
                             padding: const EdgeInsets.symmetric(vertical: 4.0),
                             child: Row(
@@ -633,9 +711,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                   width: 90,
                                   child: TextField(
                                     decoration: const InputDecoration(
-                                        isDense: true,
-                                        border: OutlineInputBorder(),
-                                        prefixText: '\$'),
+                                      isDense: true,
+                                      border: OutlineInputBorder(),
+                                      prefixText: '\$',
+                                    ),
                                     keyboardType: TextInputType.text,
                                     onChanged: (val) {
                                       if (val.trim().isEmpty) {
@@ -644,7 +723,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                         manualInputs[userId] = val.trim();
                                         if (userId == currentUserId) {
                                           setStateDialog(
-                                              () => includeCreator = true);
+                                            () => includeCreator = true,
+                                          );
                                         }
                                       }
                                     },
@@ -659,8 +739,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         CheckboxListTile(
                           title: const Text('Include Me'),
                           value: includeCreator,
-                          onChanged: (val) =>
-                              setStateDialog(() => includeCreator = val ?? true),
+                          onChanged: (val) => setStateDialog(
+                            () => includeCreator = val ?? true,
+                          ),
                         ),
                     ],
                   ),
@@ -668,8 +749,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               actions: [
                 TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel')),
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
                 ElevatedButton(
                   onPressed: () async {
                     final totalStr = amountController.text.trim();
@@ -678,15 +760,21 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     if (description.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('Please enter a description')));
+                        const SnackBar(
+                          content: Text('Please enter a description'),
+                        ),
+                      );
                       return;
                     }
+
                     if (totalStr.isEmpty ||
                         double.tryParse(totalStr) == null ||
                         total <= 0) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                          content: Text('Please enter a valid total amount')));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Please enter a valid total amount'),
+                        ),
+                      );
                       return;
                     }
 
@@ -699,26 +787,38 @@ class _HomeScreenState extends State<HomeScreen> {
                       for (var entry in manualInputs.entries) {
                         final userId = entry.key;
                         final rawValue = entry.value;
-                        double? parsedValue = double.tryParse(rawValue);
+                        final parsedValue = double.tryParse(rawValue);
+
                         if (parsedValue == null) {
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
                               content: Text(
-                                  'Invalid number for user $userId: "$rawValue"')));
+                                'Invalid number for user $userId: "$rawValue"',
+                              ),
+                            ),
+                          );
                           return;
                         }
-                        sharesList.add(
-                            {'user_id': userId, 'amount': parsedValue});
+
+                        sharesList.add({
+                          'user_id': userId,
+                          'amount': parsedValue,
+                        });
+
                         if (userId == currentUserId) {
                           finalIncludeCreator = true;
                         }
                       }
+
                       if (sharesList.isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content:
-                                    Text('Please fill at least one share')));
+                          const SnackBar(
+                            content: Text('Please fill at least one share'),
+                          ),
+                        );
                         return;
                       }
+
                       finalManualShares = sharesList;
                     }
 
@@ -732,18 +832,20 @@ class _HomeScreenState extends State<HomeScreen> {
                         'household_id': householdId,
                         'split_evenly': splitEvenly,
                         'include_creator': finalIncludeCreator,
-                        'manual_shares':
-                            splitEvenly ? null : finalManualShares,
+                        'manual_shares': splitEvenly ? null : finalManualShares,
                       });
+
                       if (!context.mounted) return;
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Success!")));
+                        const SnackBar(content: Text("Success!")),
+                      );
                       _loadData();
                     } catch (e) {
                       if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Error: $e')));
+                        SnackBar(content: Text('Error: $e')),
+                      );
                     }
                   },
                   child: const Text('Submit'),
@@ -775,10 +877,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final amountController = TextEditingController();
     final descriptionController = TextEditingController();
     final categoryController = TextEditingController();
-    
+
     bool splitEvenly = true;
-    bool includeCreator = true; 
-    // Map to store raw strings from the input fields
+    bool includeCreator = true;
     Map<int, String> manualInputs = {};
 
     return showDialog(
@@ -867,7 +968,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
                                         if (userId == currentUserId) {
                                           setStateDialog(
-                                              () => includeCreator = true);
+                                            () => includeCreator = true,
+                                          );
                                         }
                                       }
                                     },
@@ -906,6 +1008,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       _showError('Please enter a description');
                       return;
                     }
+
                     if (totalStr.isEmpty ||
                         double.tryParse(totalStr) == null ||
                         total <= 0) {
@@ -914,7 +1017,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       return;
                     }
 
-                    bool finalIncludeCreator = splitEvenly ? includeCreator : false; 
+                    bool finalIncludeCreator =
+                        splitEvenly ? includeCreator : false;
                     List<Map<String, dynamic>>? finalManualShares;
 
                     if (!splitEvenly) {
@@ -923,8 +1027,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       for (var entry in manualInputs.entries) {
                         final userId = entry.key;
                         final rawValue = entry.value;
+                        final parsedValue = double.tryParse(rawValue);
 
-                        double? parsedValue = double.tryParse(rawValue);
                         if (parsedValue == null) {
                           Navigator.of(context).pop();
                           _showError(
@@ -956,16 +1060,18 @@ class _HomeScreenState extends State<HomeScreen> {
                       await _apiService.createAndSplitExpense({
                         'amount': total,
                         'description': description,
-                        'category': categoryController.text.isEmpty ? null : categoryController.text,
+                        'category': categoryController.text.isEmpty
+                            ? null
+                            : categoryController.text,
                         'household_id': householdId,
                         'split_evenly': splitEvenly,
-                        'include_creator': finalIncludeCreator, 
+                        'include_creator': finalIncludeCreator,
                         'manual_shares': splitEvenly ? null : finalManualShares,
                       });
 
                       if (!context.mounted) return;
                       Navigator.pop(context);
-                      _loadData(); 
+                      _loadData();
                     } catch (e) {
                       if (!context.mounted) return;
                       _showError('Failed to create expense: $e');
