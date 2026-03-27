@@ -56,7 +56,10 @@ def get_current_user_active_household_members(
                 "username": u.username,
                 "full_name": u.full_name,
                 "is_admin": any(
-                    hm.user_id == u.id and hm.household_id == membership.household_id and hm.left_at is None and hm.is_admin
+                    hm.user_id == u.id
+                    and hm.household_id == membership.household_id
+                    and hm.left_at is None
+                    and hm.is_admin
                     for hm in u.household_memberships
                 ),
             }
