@@ -244,35 +244,6 @@ class ApiService {
     }
   }
 
-  Future<List<dynamic>> getRequestedExpenses() async {
-    await _loadToken();
-
-    final response = await http.get(
-      Uri.parse('$baseUrl/expenses/requested'),
-      headers: _getHeaders(),
-    );
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body) as List<dynamic>;
-    } else {
-      throw Exception('Failed to load requested expenses: ${response.body}');
-    }
-  }
-
-  Future<void> respondToExpenseShare(int expenseId, String decision) async {
-    await _loadToken();
-
-    final response = await http.post(
-      Uri.parse('$baseUrl/expenses/$expenseId/respond-share'),
-      headers: _getHeaders(),
-      body: jsonEncode({'decision': decision}),
-    );
-
-    if (response.statusCode != 200) {
-      throw Exception('Failed to respond to expense share: ${response.body}');
-    }
-  }
-
   // Household endpoints
   Future<Map<String, dynamic>?> getMyHousehold() async {
     await _loadToken();
