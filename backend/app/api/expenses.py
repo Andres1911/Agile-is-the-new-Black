@@ -174,6 +174,9 @@ def create_recurring_expense(
         db.commit()
     except HTTPException:
         raise
+    except ValueError as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception:
         db.rollback()
         raise HTTPException(status_code=500, detail="Database error during recurring expense creation") from None

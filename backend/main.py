@@ -4,9 +4,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import auth, expenses, households, users
 from app.core.config import settings
 from app.db.database import Base, engine
+from app.db.migrations import migrate_sqlite_schema
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
+
+# Apply lightweight migrations for existing local SQLite DBs.
+migrate_sqlite_schema(engine)
 
 app = FastAPI(
     title=settings.PROJECT_NAME,

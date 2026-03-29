@@ -97,6 +97,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _currentUser = loadedUser;
         _household = loadedHousehold;
         _expenses = loadedExpenses;
+        _currentUserIsAdmin = loadedCurrentUserIsAdmin;
         _isLoading = false;
       });
       if (error != null) {
@@ -589,12 +590,14 @@ class _HomeScreenState extends State<HomeScreen> {
     List<dynamic> activeMembers = [];
     int? householdId;
     int? currentUserId;
+    bool currentUserIsAdmin = false;
 
     try {
       final membersData = await _apiService.fetchActiveMembers();
       activeMembers = membersData['members'];
       householdId = membersData['household_id'];
       currentUserId = membersData['current_user_id'];
+      currentUserIsAdmin = membersData['current_user_is_admin'] == true;
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context)
@@ -612,6 +615,18 @@ class _HomeScreenState extends State<HomeScreen> {
     bool splitEvenly = true;
     bool includeCreator = true;
     Map<int, String> manualInputs = {};
+
+    bool isRecurring = false;
+    String? recurrenceUnit;
+    DateTime? startAt;
+    DateTime? endAt;
+    String endCondition = 'date';
+    final occurrencesController = TextEditingController();
+
+    String _formatDate(DateTime dt) {
+      final d = DateTime(dt.year, dt.month, dt.day);
+      return d.toIso8601String().split('T').first;
+    }
 
     if (!context.mounted) return;
 
@@ -743,6 +758,141 @@ class _HomeScreenState extends State<HomeScreen> {
                             () => includeCreator = val ?? true,
                           ),
                         ),
+
+                        if (currentUserIsAdmin) ...[
+                          const Divider(height: 30),
+                          SwitchListTile(
+                            title: const Text('Recurring'),
+                            value: isRecurring,
+                            onChanged: (val) => setStateDialog(() {
+                              isRecurring = val;
+                              if (!isRecurring) {
+                                recurrenceUnit = null;
+                                startAt = null;
+                                endAt = null;
+                                endCondition = 'date';
+                                occurrencesController.text = '';
+                              }
+                            }),
+                          ),
+                          if (isRecurring) ...[
+                            InputDecorator(
+                              decoration: const InputDecoration(
+                                labelText: 'Frequency',
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: recurrenceUnit,
+                                  hint: const Text('Select'),
+                                  isExpanded: true,
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: 'DAILY',
+                                      child: Text('Daily'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'WEEKLY',
+                                      child: Text('Weekly'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'MONTHLY',
+                                      child: Text('Monthly'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'YEARLY',
+                                      child: Text('Yearly'),
+                                    ),
+                                  ],
+                                  onChanged: (val) =>
+                                      setStateDialog(() => recurrenceUnit = val),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: const Text('Start date'),
+                              subtitle: Text(
+                                startAt == null ? 'Select' : _formatDate(startAt!),
+                              ),
+                              trailing: const Icon(Icons.calendar_today),
+                              onTap: () async {
+                                final picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: startAt ?? DateTime.now(),
+                                  firstDate: DateTime(2000),
+                                  lastDate: DateTime(2100),
+                                );
+                                if (picked != null) {
+                                  setStateDialog(
+                                    () => startAt =
+                                        DateTime.utc(picked.year, picked.month, picked.day),
+                                  );
+                                }
+                              },
+                            ),
+                            const SizedBox(height: 8),
+                            InputDecorator(
+                              decoration: const InputDecoration(
+                                labelText: 'End condition',
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: endCondition,
+                                  isExpanded: true,
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: 'date',
+                                      child: Text('End by date'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'occurrences',
+                                      child: Text('End by occurrences'),
+                                    ),
+                                  ],
+                                  onChanged: (val) => setStateDialog(() {
+                                    endCondition = val ?? 'date';
+                                  }),
+                                ),
+                              ),
+                            ),
+                            if (endCondition == 'date') ...[
+                              const SizedBox(height: 8),
+                              ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: const Text('End date'),
+                                subtitle: Text(
+                                  endAt == null ? 'Select' : _formatDate(endAt!),
+                                ),
+                                trailing: const Icon(Icons.calendar_today),
+                                onTap: () async {
+                                  final picked = await showDatePicker(
+                                    context: context,
+                                    initialDate: endAt ?? (startAt ?? DateTime.now()),
+                                    firstDate: DateTime(2000),
+                                    lastDate: DateTime(2100),
+                                  );
+                                  if (picked != null) {
+                                    setStateDialog(
+                                      () => endAt =
+                                          DateTime.utc(picked.year, picked.month, picked.day),
+                                    );
+                                  }
+                                },
+                              ),
+                            ],
+                            if (endCondition == 'occurrences') ...[
+                              const SizedBox(height: 8),
+                              TextField(
+                                controller: occurrencesController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Occurrences',
+                                ),
+                                keyboardType: TextInputType.number,
+                              ),
+                            ],
+                          ],
+                        ],
                     ],
                   ),
                 ),
@@ -822,7 +972,90 @@ class _HomeScreenState extends State<HomeScreen> {
                       finalManualShares = sharesList;
                     }
 
+                    if (isRecurring) {
+                      if (recurrenceUnit == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Please select a frequency'),
+                          ),
+                        );
+                        return;
+                      }
+                      if (startAt == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Please select a start date'),
+                          ),
+                        );
+                        return;
+                      }
+                      if (endCondition == 'date') {
+                        if (endAt == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Please select an end date'),
+                            ),
+                          );
+                          return;
+                        }
+                        if (endAt!.isBefore(startAt!)) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'End date must be after or equal to the start date',
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+                      } else {
+                        final occ = int.tryParse(occurrencesController.text.trim());
+                        if (occ == null || occ <= 0) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Please enter a valid number of occurrences'),
+                            ),
+                          );
+                          return;
+                        }
+                      }
+                    }
+
                     try {
+                      if (isRecurring) {
+                        final payload = {
+                          'amount': total,
+                          'description': description,
+                          'category': categoryController.text.isEmpty
+                              ? null
+                              : categoryController.text,
+                          'split_evenly': splitEvenly,
+                          'include_creator': finalIncludeCreator,
+                          'manual_shares': splitEvenly ? null : finalManualShares,
+                          'interval': 1,
+                          'unit': recurrenceUnit,
+                          'start_at': startAt!.toIso8601String(),
+                        };
+
+                        if (endCondition == 'date') {
+                          payload['end_at'] = endAt!.toIso8601String();
+                        } else {
+                          payload['max_occurrences'] =
+                              int.parse(occurrencesController.text.trim());
+                        }
+
+                        final resp = await _apiService.createRecurringExpense(payload);
+                        if (!context.mounted) return;
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(resp['detail'] ?? 'Recurring expense created'),
+                          ),
+                        );
+                        _loadData();
+                        return;
+                      }
+
                       await _apiService.createAndSplitExpense({
                         'amount': total,
                         'description': description,
@@ -862,12 +1095,14 @@ class _HomeScreenState extends State<HomeScreen> {
     List<dynamic> activeMembers = [];
     int? householdId;
     int? currentUserId;
+    bool currentUserIsAdmin = false;
 
     try {
       final data = await _apiService.fetchActiveMembers();
       activeMembers = data['members'];
       householdId = data['household_id'];
       currentUserId = data['current_user_id'];
+      currentUserIsAdmin = data['current_user_is_admin'] == true;
     } catch (e) {
       if (!context.mounted) return;
       _showError('Failed to load household members: $e');
@@ -881,6 +1116,18 @@ class _HomeScreenState extends State<HomeScreen> {
     bool splitEvenly = true;
     bool includeCreator = true;
     Map<int, String> manualInputs = {};
+
+    bool isRecurring = false;
+    String? recurrenceUnit;
+    DateTime? startAt;
+    DateTime? endAt;
+    String endCondition = 'date';
+    final occurrencesController = TextEditingController();
+
+    String _formatDate(DateTime dt) {
+      final d = DateTime(dt.year, dt.month, dt.day);
+      return d.toIso8601String().split('T').first;
+    }
 
     return showDialog(
       context: context,
@@ -988,6 +1235,145 @@ class _HomeScreenState extends State<HomeScreen> {
                             () => includeCreator = val ?? true,
                           ),
                         ),
+
+                      if (currentUserIsAdmin) ...[
+                        const Divider(height: 32),
+                        SwitchListTile(
+                          title: const Text('Recurring'),
+                          value: isRecurring,
+                          onChanged: (val) => setStateDialog(() {
+                            isRecurring = val;
+                            if (!isRecurring) {
+                              recurrenceUnit = null;
+                              startAt = null;
+                              endAt = null;
+                              endCondition = 'date';
+                              occurrencesController.text = '';
+                            }
+                          }),
+                        ),
+                        if (isRecurring) ...[
+                          InputDecorator(
+                            decoration: const InputDecoration(
+                              labelText: 'Frequency',
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: recurrenceUnit,
+                                hint: const Text('Select'),
+                                isExpanded: true,
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: 'DAILY',
+                                    child: Text('Daily'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'WEEKLY',
+                                    child: Text('Weekly'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'MONTHLY',
+                                    child: Text('Monthly'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'YEARLY',
+                                    child: Text('Yearly'),
+                                  ),
+                                ],
+                                onChanged: (val) =>
+                                    setStateDialog(() => recurrenceUnit = val),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text('Start date'),
+                            subtitle: Text(
+                              startAt == null
+                                  ? 'Select'
+                                  : _formatDate(startAt!),
+                            ),
+                            trailing: const Icon(Icons.calendar_today),
+                            onTap: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: startAt ?? DateTime.now(),
+                                firstDate: DateTime(2000),
+                                lastDate: DateTime(2100),
+                              );
+                              if (picked != null) {
+                                setStateDialog(
+                                  () => startAt =
+                                      DateTime.utc(picked.year, picked.month, picked.day),
+                                );
+                              }
+                            },
+                          ),
+                          const SizedBox(height: 8),
+                          InputDecorator(
+                            decoration: const InputDecoration(
+                              labelText: 'End condition',
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: endCondition,
+                                isExpanded: true,
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: 'date',
+                                    child: Text('End by date'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'occurrences',
+                                    child: Text('End by occurrences'),
+                                  ),
+                                ],
+                                onChanged: (val) => setStateDialog(() {
+                                  endCondition = val ?? 'date';
+                                }),
+                              ),
+                            ),
+                          ),
+                          if (endCondition == 'date') ...[
+                            const SizedBox(height: 8),
+                            ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: const Text('End date'),
+                              subtitle: Text(
+                                endAt == null
+                                    ? 'Select'
+                                    : _formatDate(endAt!),
+                              ),
+                              trailing: const Icon(Icons.calendar_today),
+                              onTap: () async {
+                                final picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: endAt ?? (startAt ?? DateTime.now()),
+                                  firstDate: DateTime(2000),
+                                  lastDate: DateTime(2100),
+                                );
+                                if (picked != null) {
+                                  setStateDialog(
+                                    () => endAt =
+                                        DateTime.utc(picked.year, picked.month, picked.day),
+                                  );
+                                }
+                              },
+                            ),
+                          ],
+                          if (endCondition == 'occurrences') ...[
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: occurrencesController,
+                              decoration: const InputDecoration(
+                                labelText: 'Occurrences',
+                              ),
+                              keyboardType: TextInputType.number,
+                            ),
+                          ],
+                        ],
+                      ],
                     ],
                   ),
                 ),
@@ -1056,7 +1442,75 @@ class _HomeScreenState extends State<HomeScreen> {
                       finalManualShares = sharesList;
                     }
 
+                    if (isRecurring) {
+                      if (recurrenceUnit == null) {
+                        Navigator.of(context).pop();
+                        _showError('Please select a frequency');
+                        return;
+                      }
+                      if (startAt == null) {
+                        Navigator.of(context).pop();
+                        _showError('Please select a start date');
+                        return;
+                      }
+                      if (endCondition == 'date') {
+                        if (endAt == null) {
+                          Navigator.of(context).pop();
+                          _showError('Please select an end date');
+                          return;
+                        }
+                        if (endAt!.isBefore(startAt!)) {
+                          Navigator.of(context).pop();
+                          _showError(
+                            'End date must be after or equal to the start date',
+                          );
+                          return;
+                        }
+                      } else {
+                        final occ = int.tryParse(occurrencesController.text.trim());
+                        if (occ == null || occ <= 0) {
+                          Navigator.of(context).pop();
+                          _showError('Please enter a valid number of occurrences');
+                          return;
+                        }
+                      }
+                    }
+
                     try {
+                      if (isRecurring) {
+                        final payload = {
+                          'amount': total,
+                          'description': description,
+                          'category': categoryController.text.isEmpty
+                              ? null
+                              : categoryController.text,
+                          'split_evenly': splitEvenly,
+                          'include_creator': finalIncludeCreator,
+                          'manual_shares': splitEvenly ? null : finalManualShares,
+                          'interval': 1,
+                          'unit': recurrenceUnit,
+                          'start_at': startAt!.toIso8601String(),
+                        };
+
+                        if (endCondition == 'date') {
+                          payload['end_at'] = endAt!.toIso8601String();
+                        } else {
+                          payload['max_occurrences'] =
+                              int.parse(occurrencesController.text.trim());
+                        }
+
+                        final resp = await _apiService.createRecurringExpense(payload);
+                        if (!context.mounted) return;
+                        Navigator.pop(context);
+                        _loadData();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(resp['detail'] ?? 'Recurring expense created'),
+                          ),
+                        );
+                        return;
+                      }
+
                       await _apiService.createAndSplitExpense({
                         'amount': total,
                         'description': description,

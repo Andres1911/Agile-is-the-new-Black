@@ -196,6 +196,28 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> createRecurringExpense(
+    Map<String, dynamic> data,
+  ) async {
+    await _loadToken();
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/expenses/recurring'),
+      headers: _getHeaders(),
+      body: jsonEncode(data),
+    );
+
+    final decoded = jsonDecode(response.body);
+    if (response.statusCode != 201) {
+      if (decoded is Map<String, dynamic>) {
+        throw Exception(decoded['detail'] ?? 'Failed to create recurring expense');
+      }
+      throw Exception('Failed to create recurring expense');
+    }
+
+    return decoded as Map<String, dynamic>;
+  }
+
   Future<Map<String, dynamic>> fetchActiveMembers() async {
     await _loadToken();
 
