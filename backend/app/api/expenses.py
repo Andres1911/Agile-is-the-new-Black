@@ -25,6 +25,8 @@ from app.schemas.schemas import (
     RecurringExpenseGenerateResponse,
     RequestedExpense,
     RespondExpenseShareRequest,
+)
+from app.schemas.schemas import (
     RecurringExpense as RecurringExpenseSchema,
 )
 from app.services.receipt_parser import parse_receipt, validate_file_extension
