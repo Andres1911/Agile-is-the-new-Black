@@ -616,17 +616,7 @@ class _HomeScreenState extends State<HomeScreen> {
     bool includeCreator = true;
     Map<int, String> manualInputs = {};
 
-    bool isRecurring = false;
-    String? recurrenceUnit;
-    DateTime? startAt;
-    DateTime? endAt;
-    String endCondition = 'date';
-    final occurrencesController = TextEditingController();
-
-    String _formatDate(DateTime dt) {
-      final d = DateTime(dt.year, dt.month, dt.day);
-      return d.toIso8601String().split('T').first;
-    }
+    final recurring = _RecurringState();
 
     if (!context.mounted) return;
 
@@ -759,140 +749,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
 
-                        if (currentUserIsAdmin) ...[
-                          const Divider(height: 30),
-                          SwitchListTile(
-                            title: const Text('Recurring'),
-                            value: isRecurring,
-                            onChanged: (val) => setStateDialog(() {
-                              isRecurring = val;
-                              if (!isRecurring) {
-                                recurrenceUnit = null;
-                                startAt = null;
-                                endAt = null;
-                                endCondition = 'date';
-                                occurrencesController.text = '';
-                              }
-                            }),
+                        if (currentUserIsAdmin)
+                          ..._buildRecurringSectionWidgets(
+                            recurring,
+                            setStateDialog,
+                            context,
                           ),
-                          if (isRecurring) ...[
-                            InputDecorator(
-                              decoration: const InputDecoration(
-                                labelText: 'Frequency',
-                              ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  value: recurrenceUnit,
-                                  hint: const Text('Select'),
-                                  isExpanded: true,
-                                  items: const [
-                                    DropdownMenuItem(
-                                      value: 'DAILY',
-                                      child: Text('Daily'),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 'WEEKLY',
-                                      child: Text('Weekly'),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 'MONTHLY',
-                                      child: Text('Monthly'),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 'YEARLY',
-                                      child: Text('Yearly'),
-                                    ),
-                                  ],
-                                  onChanged: (val) =>
-                                      setStateDialog(() => recurrenceUnit = val),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: const Text('Start date'),
-                              subtitle: Text(
-                                startAt == null ? 'Select' : _formatDate(startAt!),
-                              ),
-                              trailing: const Icon(Icons.calendar_today),
-                              onTap: () async {
-                                final picked = await showDatePicker(
-                                  context: context,
-                                  initialDate: startAt ?? DateTime.now(),
-                                  firstDate: DateTime(2000),
-                                  lastDate: DateTime(2100),
-                                );
-                                if (picked != null) {
-                                  setStateDialog(
-                                    () => startAt =
-                                        DateTime.utc(picked.year, picked.month, picked.day),
-                                  );
-                                }
-                              },
-                            ),
-                            const SizedBox(height: 8),
-                            InputDecorator(
-                              decoration: const InputDecoration(
-                                labelText: 'End condition',
-                              ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  value: endCondition,
-                                  isExpanded: true,
-                                  items: const [
-                                    DropdownMenuItem(
-                                      value: 'date',
-                                      child: Text('End by date'),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 'occurrences',
-                                      child: Text('End by occurrences'),
-                                    ),
-                                  ],
-                                  onChanged: (val) => setStateDialog(() {
-                                    endCondition = val ?? 'date';
-                                  }),
-                                ),
-                              ),
-                            ),
-                            if (endCondition == 'date') ...[
-                              const SizedBox(height: 8),
-                              ListTile(
-                                contentPadding: EdgeInsets.zero,
-                                title: const Text('End date'),
-                                subtitle: Text(
-                                  endAt == null ? 'Select' : _formatDate(endAt!),
-                                ),
-                                trailing: const Icon(Icons.calendar_today),
-                                onTap: () async {
-                                  final picked = await showDatePicker(
-                                    context: context,
-                                    initialDate: endAt ?? (startAt ?? DateTime.now()),
-                                    firstDate: DateTime(2000),
-                                    lastDate: DateTime(2100),
-                                  );
-                                  if (picked != null) {
-                                    setStateDialog(
-                                      () => endAt =
-                                          DateTime.utc(picked.year, picked.month, picked.day),
-                                    );
-                                  }
-                                },
-                              ),
-                            ],
-                            if (endCondition == 'occurrences') ...[
-                              const SizedBox(height: 8),
-                              TextField(
-                                controller: occurrencesController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Occurrences',
-                                ),
-                                keyboardType: TextInputType.number,
-                              ),
-                            ],
-                          ],
-                        ],
                     ],
                   ),
                 ),
@@ -972,77 +834,27 @@ class _HomeScreenState extends State<HomeScreen> {
                       finalManualShares = sharesList;
                     }
 
-                    if (isRecurring) {
-                      if (recurrenceUnit == null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Please select a frequency'),
-                          ),
-                        );
-                        return;
-                      }
-                      if (startAt == null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Please select a start date'),
-                          ),
-                        );
-                        return;
-                      }
-                      if (endCondition == 'date') {
-                        if (endAt == null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Please select an end date'),
-                            ),
-                          );
-                          return;
-                        }
-                        if (endAt!.isBefore(startAt!)) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'End date must be after or equal to the start date',
-                              ),
-                            ),
-                          );
-                          return;
-                        }
-                      } else {
-                        final occ = int.tryParse(occurrencesController.text.trim());
-                        if (occ == null || occ <= 0) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Please enter a valid number of occurrences'),
-                            ),
-                          );
-                          return;
-                        }
-                      }
+                    final recurringError = _validateRecurring(recurring);
+                    if (recurringError != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(recurringError)),
+                      );
+                      return;
                     }
 
                     try {
-                      if (isRecurring) {
-                        final payload = {
-                          'amount': total,
-                          'description': description,
-                          'category': categoryController.text.isEmpty
+                      if (recurring.isRecurring) {
+                        final payload = _buildRecurringPayload(
+                          amount: total,
+                          description: description,
+                          category: categoryController.text.isEmpty
                               ? null
                               : categoryController.text,
-                          'split_evenly': splitEvenly,
-                          'include_creator': finalIncludeCreator,
-                          'manual_shares': splitEvenly ? null : finalManualShares,
-                          'interval': 1,
-                          'unit': recurrenceUnit,
-                          'start_at': startAt!.toIso8601String(),
-                        };
-
-                        if (endCondition == 'date') {
-                          payload['end_at'] = endAt!.toIso8601String();
-                        } else {
-                          payload['max_occurrences'] =
-                              int.parse(occurrencesController.text.trim());
-                        }
+                          splitEvenly: splitEvenly,
+                          includeCreator: finalIncludeCreator,
+                          manualShares: finalManualShares,
+                          recurring: recurring,
+                        );
 
                         final resp = await _apiService.createRecurringExpense(payload);
                         if (!context.mounted) return;
@@ -1117,17 +929,7 @@ class _HomeScreenState extends State<HomeScreen> {
     bool includeCreator = true;
     Map<int, String> manualInputs = {};
 
-    bool isRecurring = false;
-    String? recurrenceUnit;
-    DateTime? startAt;
-    DateTime? endAt;
-    String endCondition = 'date';
-    final occurrencesController = TextEditingController();
-
-    String _formatDate(DateTime dt) {
-      final d = DateTime(dt.year, dt.month, dt.day);
-      return d.toIso8601String().split('T').first;
-    }
+    final recurring = _RecurringState();
 
     return showDialog(
       context: context,
@@ -1236,144 +1038,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
 
-                      if (currentUserIsAdmin) ...[
-                        const Divider(height: 32),
-                        SwitchListTile(
-                          title: const Text('Recurring'),
-                          value: isRecurring,
-                          onChanged: (val) => setStateDialog(() {
-                            isRecurring = val;
-                            if (!isRecurring) {
-                              recurrenceUnit = null;
-                              startAt = null;
-                              endAt = null;
-                              endCondition = 'date';
-                              occurrencesController.text = '';
-                            }
-                          }),
+                      if (currentUserIsAdmin)
+                        ..._buildRecurringSectionWidgets(
+                          recurring,
+                          setStateDialog,
+                          context,
                         ),
-                        if (isRecurring) ...[
-                          InputDecorator(
-                            decoration: const InputDecoration(
-                              labelText: 'Frequency',
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: recurrenceUnit,
-                                hint: const Text('Select'),
-                                isExpanded: true,
-                                items: const [
-                                  DropdownMenuItem(
-                                    value: 'DAILY',
-                                    child: Text('Daily'),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: 'WEEKLY',
-                                    child: Text('Weekly'),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: 'MONTHLY',
-                                    child: Text('Monthly'),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: 'YEARLY',
-                                    child: Text('Yearly'),
-                                  ),
-                                ],
-                                onChanged: (val) =>
-                                    setStateDialog(() => recurrenceUnit = val),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: const Text('Start date'),
-                            subtitle: Text(
-                              startAt == null
-                                  ? 'Select'
-                                  : _formatDate(startAt!),
-                            ),
-                            trailing: const Icon(Icons.calendar_today),
-                            onTap: () async {
-                              final picked = await showDatePicker(
-                                context: context,
-                                initialDate: startAt ?? DateTime.now(),
-                                firstDate: DateTime(2000),
-                                lastDate: DateTime(2100),
-                              );
-                              if (picked != null) {
-                                setStateDialog(
-                                  () => startAt =
-                                      DateTime.utc(picked.year, picked.month, picked.day),
-                                );
-                              }
-                            },
-                          ),
-                          const SizedBox(height: 8),
-                          InputDecorator(
-                            decoration: const InputDecoration(
-                              labelText: 'End condition',
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: endCondition,
-                                isExpanded: true,
-                                items: const [
-                                  DropdownMenuItem(
-                                    value: 'date',
-                                    child: Text('End by date'),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: 'occurrences',
-                                    child: Text('End by occurrences'),
-                                  ),
-                                ],
-                                onChanged: (val) => setStateDialog(() {
-                                  endCondition = val ?? 'date';
-                                }),
-                              ),
-                            ),
-                          ),
-                          if (endCondition == 'date') ...[
-                            const SizedBox(height: 8),
-                            ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: const Text('End date'),
-                              subtitle: Text(
-                                endAt == null
-                                    ? 'Select'
-                                    : _formatDate(endAt!),
-                              ),
-                              trailing: const Icon(Icons.calendar_today),
-                              onTap: () async {
-                                final picked = await showDatePicker(
-                                  context: context,
-                                  initialDate: endAt ?? (startAt ?? DateTime.now()),
-                                  firstDate: DateTime(2000),
-                                  lastDate: DateTime(2100),
-                                );
-                                if (picked != null) {
-                                  setStateDialog(
-                                    () => endAt =
-                                        DateTime.utc(picked.year, picked.month, picked.day),
-                                  );
-                                }
-                              },
-                            ),
-                          ],
-                          if (endCondition == 'occurrences') ...[
-                            const SizedBox(height: 8),
-                            TextField(
-                              controller: occurrencesController,
-                              decoration: const InputDecoration(
-                                labelText: 'Occurrences',
-                              ),
-                              keyboardType: TextInputType.number,
-                            ),
-                          ],
-                        ],
-                      ],
                     ],
                   ),
                 ),
@@ -1390,16 +1060,22 @@ class _HomeScreenState extends State<HomeScreen> {
                     final description = descriptionController.text.trim();
 
                     if (description.isEmpty) {
-                      Navigator.of(context).pop();
-                      _showError('Please enter a description');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Please enter a description'),
+                        ),
+                      );
                       return;
                     }
 
                     if (totalStr.isEmpty ||
                         double.tryParse(totalStr) == null ||
                         total <= 0) {
-                      Navigator.of(context).pop();
-                      _showError('Please enter a valid total amount');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Please enter a valid total amount'),
+                        ),
+                      );
                       return;
                     }
 
@@ -1416,9 +1092,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         final parsedValue = double.tryParse(rawValue);
 
                         if (parsedValue == null) {
-                          Navigator.of(context).pop();
-                          _showError(
-                            'Invalid amount for member $userId: "$rawValue"',
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Invalid amount for member $userId: "$rawValue"',
+                              ),
+                            ),
                           );
                           return;
                         }
@@ -1434,70 +1113,38 @@ class _HomeScreenState extends State<HomeScreen> {
                       }
 
                       if (sharesList.isEmpty) {
-                        Navigator.of(context).pop();
-                        _showError('Please fill at least one share');
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Please fill at least one share'),
+                          ),
+                        );
                         return;
                       }
 
                       finalManualShares = sharesList;
                     }
 
-                    if (isRecurring) {
-                      if (recurrenceUnit == null) {
-                        Navigator.of(context).pop();
-                        _showError('Please select a frequency');
-                        return;
-                      }
-                      if (startAt == null) {
-                        Navigator.of(context).pop();
-                        _showError('Please select a start date');
-                        return;
-                      }
-                      if (endCondition == 'date') {
-                        if (endAt == null) {
-                          Navigator.of(context).pop();
-                          _showError('Please select an end date');
-                          return;
-                        }
-                        if (endAt!.isBefore(startAt!)) {
-                          Navigator.of(context).pop();
-                          _showError(
-                            'End date must be after or equal to the start date',
-                          );
-                          return;
-                        }
-                      } else {
-                        final occ = int.tryParse(occurrencesController.text.trim());
-                        if (occ == null || occ <= 0) {
-                          Navigator.of(context).pop();
-                          _showError('Please enter a valid number of occurrences');
-                          return;
-                        }
-                      }
+                    final recurringError = _validateRecurring(recurring);
+                    if (recurringError != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(recurringError)),
+                      );
+                      return;
                     }
 
                     try {
-                      if (isRecurring) {
-                        final payload = {
-                          'amount': total,
-                          'description': description,
-                          'category': categoryController.text.isEmpty
+                      if (recurring.isRecurring) {
+                        final payload = _buildRecurringPayload(
+                          amount: total,
+                          description: description,
+                          category: categoryController.text.isEmpty
                               ? null
                               : categoryController.text,
-                          'split_evenly': splitEvenly,
-                          'include_creator': finalIncludeCreator,
-                          'manual_shares': splitEvenly ? null : finalManualShares,
-                          'interval': 1,
-                          'unit': recurrenceUnit,
-                          'start_at': startAt!.toIso8601String(),
-                        };
-
-                        if (endCondition == 'date') {
-                          payload['end_at'] = endAt!.toIso8601String();
-                        } else {
-                          payload['max_occurrences'] =
-                              int.parse(occurrencesController.text.trim());
-                        }
+                          splitEvenly: splitEvenly,
+                          includeCreator: finalIncludeCreator,
+                          manualShares: finalManualShares,
+                          recurring: recurring,
+                        );
 
                         final resp = await _apiService.createRecurringExpense(payload);
                         if (!context.mounted) return;
@@ -1528,7 +1175,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       _loadData();
                     } catch (e) {
                       if (!context.mounted) return;
-                      _showError('Failed to create expense: $e');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Failed to create expense: $e')),
+                      );
                     }
                   },
                   style: ElevatedButton.styleFrom(
@@ -1547,6 +1196,178 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ── Recurring-expense helpers ────────────────────────────────────────────
+
+  static String _formatDate(DateTime dt) {
+    final d = DateTime(dt.year, dt.month, dt.day);
+    return d.toIso8601String().split('T').first;
+  }
+
+  static String? _validateRecurring(_RecurringState state) {
+    if (!state.isRecurring) return null;
+    if (state.recurrenceUnit == null) return 'Please select a frequency';
+    if (state.startAt == null) return 'Please select a start date';
+    if (state.endCondition == 'date') {
+      if (state.endAt == null) return 'Please select an end date';
+      if (state.endAt!.isBefore(state.startAt!)) {
+        return 'End date must be after or equal to the start date';
+      }
+    } else {
+      final occ = int.tryParse(state.occurrencesController.text.trim());
+      if (occ == null || occ <= 0) {
+        return 'Please enter a valid number of occurrences';
+      }
+    }
+    return null;
+  }
+
+  static Map<String, dynamic> _buildRecurringPayload({
+    required double amount,
+    required String description,
+    required String? category,
+    required bool splitEvenly,
+    required bool includeCreator,
+    required List<Map<String, dynamic>>? manualShares,
+    required _RecurringState recurring,
+  }) {
+    final payload = <String, dynamic>{
+      'amount': amount,
+      'description': description,
+      'category': category,
+      'split_evenly': splitEvenly,
+      'include_creator': includeCreator,
+      'manual_shares': splitEvenly ? null : manualShares,
+      'interval': 1,
+      'unit': recurring.recurrenceUnit,
+      'start_at': recurring.startAt!.toIso8601String(),
+    };
+    if (recurring.endCondition == 'date') {
+      payload['end_at'] = recurring.endAt!.toIso8601String();
+    } else {
+      payload['max_occurrences'] =
+          int.parse(recurring.occurrencesController.text.trim());
+    }
+    return payload;
+  }
+
+  List<Widget> _buildRecurringSectionWidgets(
+    _RecurringState state,
+    StateSetter setStateDialog,
+    BuildContext context,
+  ) {
+    return [
+      const Divider(height: 30),
+      SwitchListTile(
+        title: const Text('Recurring'),
+        value: state.isRecurring,
+        onChanged: (val) => setStateDialog(() {
+          state.isRecurring = val;
+          if (!val) state.reset();
+        }),
+      ),
+      if (state.isRecurring) ...[
+        InputDecorator(
+          decoration: const InputDecoration(labelText: 'Frequency'),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: state.recurrenceUnit,
+              hint: const Text('Select'),
+              isExpanded: true,
+              items: const [
+                DropdownMenuItem(value: 'DAILY', child: Text('Daily')),
+                DropdownMenuItem(value: 'WEEKLY', child: Text('Weekly')),
+                DropdownMenuItem(value: 'MONTHLY', child: Text('Monthly')),
+                DropdownMenuItem(value: 'YEARLY', child: Text('Yearly')),
+              ],
+              onChanged: (val) =>
+                  setStateDialog(() => state.recurrenceUnit = val),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Start date'),
+          subtitle: Text(
+            state.startAt == null ? 'Select' : _formatDate(state.startAt!),
+          ),
+          trailing: const Icon(Icons.calendar_today),
+          onTap: () async {
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: state.startAt ?? DateTime.now(),
+              firstDate: DateTime(2000),
+              lastDate: DateTime(2100),
+            );
+            if (picked != null) {
+              setStateDialog(
+                () => state.startAt =
+                    DateTime.utc(picked.year, picked.month, picked.day),
+              );
+            }
+          },
+        ),
+        const SizedBox(height: 8),
+        InputDecorator(
+          decoration: const InputDecoration(labelText: 'End condition'),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: state.endCondition,
+              isExpanded: true,
+              items: const [
+                DropdownMenuItem(
+                  value: 'date',
+                  child: Text('End by date'),
+                ),
+                DropdownMenuItem(
+                  value: 'occurrences',
+                  child: Text('End by occurrences'),
+                ),
+              ],
+              onChanged: (val) =>
+                  setStateDialog(() => state.endCondition = val ?? 'date'),
+            ),
+          ),
+        ),
+        if (state.endCondition == 'date') ...[
+          const SizedBox(height: 8),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('End date'),
+            subtitle: Text(
+              state.endAt == null ? 'Select' : _formatDate(state.endAt!),
+            ),
+            trailing: const Icon(Icons.calendar_today),
+            onTap: () async {
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: state.endAt ?? (state.startAt ?? DateTime.now()),
+                firstDate: DateTime(2000),
+                lastDate: DateTime(2100),
+              );
+              if (picked != null) {
+                setStateDialog(
+                  () => state.endAt =
+                      DateTime.utc(picked.year, picked.month, picked.day),
+                );
+              }
+            },
+          ),
+        ],
+        if (state.endCondition == 'occurrences') ...[
+          const SizedBox(height: 8),
+          TextField(
+            controller: state.occurrencesController,
+            decoration: const InputDecoration(labelText: 'Occurrences'),
+            keyboardType: TextInputType.number,
+          ),
+        ],
+      ],
+    ];
+  }
+
+  // ── End recurring-expense helpers ────────────────────────────────────────
+
   Future<void> _deleteExpense(int id) async {
     try {
       await _apiService.deleteExpense(id);
@@ -1555,5 +1376,26 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
       _showError('Failed to delete expense: $e');
     }
+  }
+}
+
+/// Mutable state holder for the recurring-expense form fields.
+/// Passed by reference into [_HomeScreenState._buildRecurringSectionWidgets]
+/// so that both add-expense dialogs share the same UI and logic.
+class _RecurringState {
+  bool isRecurring = false;
+  String? recurrenceUnit;
+  DateTime? startAt;
+  DateTime? endAt;
+  String endCondition = 'date';
+  final TextEditingController occurrencesController = TextEditingController();
+
+  /// Clears all recurring fields (called when the toggle is switched off).
+  void reset() {
+    recurrenceUnit = null;
+    startAt = null;
+    endAt = null;
+    endCondition = 'date';
+    occurrencesController.text = '';
   }
 }
