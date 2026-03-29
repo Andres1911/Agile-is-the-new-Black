@@ -1,4 +1,6 @@
 # Expenses API — create-and-split + confirm-payment (ID010) + scan-receipt (ID012)
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
@@ -9,6 +11,9 @@ from app.models.models import (
     ExpenseShare,
     ExpenseStatus,
     HouseholdMember,
+    RecurrenceUnit,
+    RecurringExpense,
+    RecurringExpenseShare,
     User,
     VoteStatus,
 )
@@ -16,12 +21,204 @@ from app.schemas.schemas import (
     ConfirmPaymentRequest,
     ExpenseCreate,
     OutstandingExpense,
+    RecurringExpense as RecurringExpenseSchema,
+    RecurringExpenseCreate,
+    RecurringExpenseCreateResponse,
+    RecurringExpenseGenerateResponse,
     RequestedExpense,
     RespondExpenseShareRequest,
 )
 from app.services.receipt_parser import parse_receipt, validate_file_extension
+from app.services.recurring_expenses import (
+    generate_due_recurring_expenses,
+    generate_recurring_charges,
+    preview_due_dates,
+)
 
 router = APIRouter()
+
+
+@router.get("/recurring", response_model=list[RecurringExpenseSchema])
+def list_recurring_expenses(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    membership = (
+        db.query(HouseholdMember)
+        .filter(HouseholdMember.user_id == current_user.id, HouseholdMember.left_at.is_(None))
+        .first()
+    )
+    if not membership:
+        raise HTTPException(status_code=404, detail="No active household found")
+
+    rows = (
+        db.query(RecurringExpense)
+        .filter(RecurringExpense.household_id == membership.household_id)
+        .order_by(RecurringExpense.id.desc())
+        .all()
+    )
+    return rows
+
+
+@router.post("/recurring", response_model=RecurringExpenseCreateResponse, status_code=201)
+def create_recurring_expense(
+    body: RecurringExpenseCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Create a recurring expense (admin-only) and generate charges based on end conditions."""
+
+    membership = (
+        db.query(HouseholdMember)
+        .filter(HouseholdMember.user_id == current_user.id, HouseholdMember.left_at.is_(None))
+        .first()
+    )
+    if not membership:
+        raise HTTPException(status_code=400, detail="User is not currently in any household")
+    if not membership.is_admin:
+        raise HTTPException(status_code=403, detail="Only household admins can create recurring expenses")
+
+    if not body.description:
+        raise HTTPException(status_code=400, detail="Valid description is required.")
+    if body.amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be greater than zero")
+
+    if body.unit is None:
+        raise HTTPException(status_code=400, detail="A recurrence frequency must be selected")
+
+    interval = body.interval or 1
+    if interval <= 0:
+        raise HTTPException(status_code=400, detail="interval must be >= 1")
+
+    start_at = body.start_at or datetime.now(UTC)
+
+    # Validate and compute the generation schedule (may be just [start_at] if no end condition).
+    try:
+        preview = preview_due_dates(
+            start_at=start_at,
+            interval=interval,
+            unit=body.unit,
+            end_at=body.end_at,
+            max_occurrences=body.max_occurrences,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    recurring = RecurringExpense(
+        description=body.description,
+        amount=body.amount,
+        category=body.category,
+        split_evenly=body.split_evenly,
+        include_creator=body.include_creator,
+        interval=interval,
+        unit=body.unit,
+        start_at=start_at,
+        next_due_at=start_at,
+        end_at=body.end_at,
+        max_occurrences=body.max_occurrences,
+        creator_id=current_user.id,
+        household_id=membership.household_id,
+    )
+
+    active_member_ids = {
+        r.user_id
+        for r in db.query(HouseholdMember)
+        .filter(
+            HouseholdMember.household_id == membership.household_id,
+            HouseholdMember.left_at.is_(None),
+        )
+        .all()
+    }
+
+    if not recurring.split_evenly:
+        if not body.manual_shares:
+            raise HTTPException(
+                status_code=400,
+                detail="Manual shares list cannot be empty when split_evenly is False",
+            )
+
+        total_manual = 0.0
+        for s in body.manual_shares:
+            if s.user_id not in active_member_ids:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"User {s.user_id} is not an active member of this household",
+                )
+            if s.amount <= 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Share for user {s.user_id} must be greater than zero",
+                )
+            total_manual += float(s.amount)
+            recurring.template_shares.append(
+                RecurringExpenseShare(user_id=s.user_id, amount_owed=float(s.amount))
+            )
+
+        if abs(round(total_manual, 2) - round(float(body.amount), 2)) > 0:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Cannot create expense: Split amounts {total_manual:.2f} CAD do not equal expense total {body.amount:.2f} CAD"
+                ),
+            )
+
+    try:
+        db.add(recurring)
+        db.flush()
+
+        created_ids = generate_recurring_charges(
+            db=db,
+            recurring=recurring,
+            due_dates=preview.due_dates,
+        )
+        db.commit()
+    except HTTPException:
+        raise
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Database error during recurring expense creation") from None
+
+    return RecurringExpenseCreateResponse(
+        recurring_expense_id=recurring.id,
+        created_expense_ids=created_ids,
+        detail="Recurring expense created successfully",
+    )
+
+
+@router.post("/recurring/generate", response_model=RecurringExpenseGenerateResponse)
+def generate_recurring_expenses(
+    as_of: datetime | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Generate all recurring charges due up to `as_of` for the current household."""
+
+    membership = (
+        db.query(HouseholdMember)
+        .filter(HouseholdMember.user_id == current_user.id, HouseholdMember.left_at.is_(None))
+        .first()
+    )
+    if not membership:
+        raise HTTPException(status_code=404, detail="No active household found")
+
+    try:
+        created_ids = generate_due_recurring_expenses(
+            db=db,
+            household_id=membership.household_id,
+            as_of=as_of,
+        )
+        db.commit()
+    except ValueError as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to generate recurring charges") from None
+
+    return RecurringExpenseGenerateResponse(
+        created_expense_ids=created_ids,
+        created_count=len(created_ids),
+    )
 
 
 @router.get("/outstanding", response_model=list[OutstandingExpense])
