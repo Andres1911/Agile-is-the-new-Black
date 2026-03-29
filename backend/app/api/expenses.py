@@ -108,7 +108,6 @@ def get_requested_expenses(
         .filter(
             Expense.household_id == membership.household_id,
             ExpenseShare.user_id == current_user.id,
-            ExpenseShare.vote_status == VoteStatus.PENDING,
             ExpenseShare.is_paid.is_(False),
         )
         .order_by(Expense.date.desc())

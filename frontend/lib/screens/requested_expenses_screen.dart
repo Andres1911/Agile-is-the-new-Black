@@ -6,7 +6,8 @@ class RequestedExpensesScreen extends StatefulWidget {
   const RequestedExpensesScreen({super.key});
 
   @override
-  State<RequestedExpensesScreen> createState() => _RequestedExpensesScreenState();
+  State<RequestedExpensesScreen> createState() =>
+      _RequestedExpensesScreenState();
 }
 
 class _RequestedExpensesScreenState extends State<RequestedExpensesScreen> {
@@ -14,12 +15,16 @@ class _RequestedExpensesScreenState extends State<RequestedExpensesScreen> {
 
   bool _isLoading = false;
   String? _errorMessage;
-  List<RequestedExpense> _items = [];
+  List<RequestedExpense> _allItems = [];
+  String _selectedFilter = 'PENDING';
 
   // Notification banner state
   String? _bannerMessage;
   bool _bannerIsSuccess = true;
   bool _showBanner = false;
+
+  List<RequestedExpense> get _filteredItems =>
+      _allItems.where((e) => e.voteStatus == _selectedFilter).toList();
 
   @override
   void initState() {
@@ -41,7 +46,7 @@ class _RequestedExpensesScreenState extends State<RequestedExpensesScreen> {
 
       if (!mounted) return;
       setState(() {
-        _items = items;
+        _allItems = items;
         _isLoading = false;
       });
     } catch (e) {
@@ -55,7 +60,8 @@ class _RequestedExpensesScreenState extends State<RequestedExpensesScreen> {
 
   Future<void> _respond(int expenseId, String decision) async {
     try {
-      final message = await _apiService.respondToExpenseShare(expenseId, decision);
+      final message =
+          await _apiService.respondToExpenseShare(expenseId, decision);
       if (!mounted) return;
       _showNotification(message, isSuccess: true);
       await _load();
@@ -88,7 +94,7 @@ class _RequestedExpensesScreenState extends State<RequestedExpensesScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Pending Approvals'),
+        title: const Text('My Expense Shares'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -98,131 +104,220 @@ class _RequestedExpensesScreenState extends State<RequestedExpensesScreen> {
       ),
       body: Stack(
         children: [
-          // Main content
-          _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : _errorMessage != null
-                  ? _ErrorState(message: _errorMessage!, onRetry: _load)
-                  : _items.isEmpty
-                      ? const _EmptyState()
-                      : ListView.builder(
-                          padding: const EdgeInsets.only(top: 8, bottom: 24),
-                          itemCount: _items.length,
-                          itemBuilder: (context, index) {
-                            final item = _items[index];
-                            final dateStr =
-                                item.date.toLocal().toString().split(' ')[0];
-                            return Card(
-                              margin: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            item.description,
-                                            style: theme.textTheme.titleMedium
-                                                ?.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                            ),
+          Column(
+            children: [
+              // Filter bar
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    _FilterChip(
+                      label: 'Pending',
+                      selected: _selectedFilter == 'PENDING',
+                      color: Colors.orange,
+                      onTap: () =>
+                          setState(() => _selectedFilter = 'PENDING'),
+                    ),
+                    const SizedBox(width: 8),
+                    _FilterChip(
+                      label: 'Accepted',
+                      selected: _selectedFilter == 'ACCEPTED',
+                      color: Colors.green,
+                      onTap: () =>
+                          setState(() => _selectedFilter = 'ACCEPTED'),
+                    ),
+                    const SizedBox(width: 8),
+                    _FilterChip(
+                      label: 'Rejected',
+                      selected: _selectedFilter == 'REJECTED',
+                      color: Colors.red,
+                      onTap: () =>
+                          setState(() => _selectedFilter = 'REJECTED'),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              // Content
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _errorMessage != null
+                        ? _ErrorState(
+                            message: _errorMessage!, onRetry: _load)
+                        : _filteredItems.isEmpty
+                            ? _EmptyState(filter: _selectedFilter)
+                            : ListView.builder(
+                                padding: const EdgeInsets.only(
+                                    top: 8, bottom: 24),
+                                itemCount: _filteredItems.length,
+                                itemBuilder: (context, index) {
+                                  final item = _filteredItems[index];
+                                  final dateStr = item.date
+                                      .toLocal()
+                                      .toString()
+                                      .split(' ')[0];
+                                  return Card(
+                                    margin: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 8,
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  item.description,
+                                                  style: theme
+                                                      .textTheme.titleMedium
+                                                      ?.copyWith(
+                                                    fontWeight:
+                                                        FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 10,
+                                                  vertical: 4,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: theme.colorScheme
+                                                      .primaryContainer,
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          12),
+                                                ),
+                                                child: Text(
+                                                  '\$${item.amountRequested.toStringAsFixed(2)}',
+                                                  style: theme
+                                                      .textTheme.labelLarge
+                                                      ?.copyWith(
+                                                    color: theme.colorScheme
+                                                        .onPrimaryContainer,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                        ),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 4,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: theme
-                                                .colorScheme.primaryContainer,
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                          ),
-                                          child: Text(
-                                            '\$${item.amountRequested.toStringAsFixed(2)}',
-                                            style: theme.textTheme.labelLarge
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            '${item.category ?? 'Uncategorized'} • $dateStr • by ${item.creatorUsername}',
+                                            style: theme.textTheme.bodySmall
                                                 ?.copyWith(
                                               color: theme.colorScheme
-                                                  .onPrimaryContainer,
-                                              fontWeight: FontWeight.w700,
+                                                  .onSurfaceVariant,
                                             ),
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      '${item.category ?? 'Uncategorized'} • $dateStr • by ${item.creatorUsername}',
-                                      style: theme.textTheme.bodySmall
-                                          ?.copyWith(
-                                        color: theme
-                                            .colorScheme.onSurfaceVariant,
+                                          Text(
+                                            'Total expense: \$${item.amountTotal.toStringAsFixed(2)}',
+                                            style: theme.textTheme.bodySmall
+                                                ?.copyWith(
+                                              color: theme.colorScheme
+                                                  .onSurfaceVariant,
+                                            ),
+                                          ),
+                                          // Only show buttons for PENDING
+                                          if (_selectedFilter == 'PENDING') ...[
+                                            const SizedBox(height: 14),
+                                            Row(
+                                              children: [
+                                                Expanded(
+                                                  child: OutlinedButton.icon(
+                                                    onPressed: () => _respond(
+                                                      item.expenseId,
+                                                      'decline',
+                                                    ),
+                                                    icon: const Icon(
+                                                      Icons.close,
+                                                      color: Colors.red,
+                                                    ),
+                                                    label: const Text(
+                                                      'Decline',
+                                                      style: TextStyle(
+                                                          color: Colors.red),
+                                                    ),
+                                                    style: OutlinedButton
+                                                        .styleFrom(
+                                                      side: const BorderSide(
+                                                          color: Colors.red),
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 12),
+                                                Expanded(
+                                                  child: ElevatedButton.icon(
+                                                    onPressed: () => _respond(
+                                                      item.expenseId,
+                                                      'accept',
+                                                    ),
+                                                    icon: const Icon(
+                                                        Icons.check),
+                                                    label: const Text(
+                                                        'Accept'),
+                                                    style: ElevatedButton
+                                                        .styleFrom(
+                                                      backgroundColor:
+                                                          Colors.green.shade600,
+                                                      foregroundColor:
+                                                          Colors.white,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                          // Show status badge for accepted/rejected
+                                          if (_selectedFilter != 'PENDING') ...[
+                                            const SizedBox(height: 10),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                horizontal: 10,
+                                                vertical: 4,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: _selectedFilter ==
+                                                        'ACCEPTED'
+                                                    ? Colors.green.shade50
+                                                    : Colors.red.shade50,
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              child: Text(
+                                                _selectedFilter == 'ACCEPTED'
+                                                    ? 'You accepted this expense'
+                                                    : 'You declined this expense',
+                                                style: TextStyle(
+                                                  color: _selectedFilter ==
+                                                          'ACCEPTED'
+                                                      ? Colors.green.shade700
+                                                      : Colors.red.shade700,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
                                       ),
                                     ),
-                                    Text(
-                                      'Total expense: \$${item.amountTotal.toStringAsFixed(2)}',
-                                      style: theme.textTheme.bodySmall
-                                          ?.copyWith(
-                                        color: theme
-                                            .colorScheme.onSurfaceVariant,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 14),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: OutlinedButton.icon(
-                                            onPressed: () => _respond(
-                                              item.expenseId,
-                                              'decline',
-                                            ),
-                                            icon: const Icon(
-                                              Icons.close,
-                                              color: Colors.red,
-                                            ),
-                                            label: const Text(
-                                              'Decline',
-                                              style: TextStyle(
-                                                  color: Colors.red),
-                                            ),
-                                            style: OutlinedButton.styleFrom(
-                                              side: const BorderSide(
-                                                  color: Colors.red),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: ElevatedButton.icon(
-                                            onPressed: () => _respond(
-                                              item.expenseId,
-                                              'accept',
-                                            ),
-                                            icon: const Icon(Icons.check),
-                                            label: const Text('Accept'),
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor:
-                                                  Colors.green.shade600,
-                                              foregroundColor: Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
+                                  );
+                                },
                               ),
-                            );
-                          },
-                        ),
+              ),
+            ],
+          ),
 
-          // Notification banner (matches HomeScreen style)
+          // Notification banner
           IgnorePointer(
             ignoring: !_showBanner,
             child: AnimatedSlide(
@@ -243,7 +338,7 @@ class _RequestedExpensesScreenState extends State<RequestedExpensesScreen> {
                         child: Material(
                           color: _bannerIsSuccess
                               ? Colors.green.shade600
-                              : theme.colorScheme.errorContainer,
+                              : Theme.of(context).colorScheme.errorContainer,
                           elevation: 6,
                           borderRadius: BorderRadius.circular(16),
                           child: Padding(
@@ -259,7 +354,9 @@ class _RequestedExpensesScreenState extends State<RequestedExpensesScreen> {
                                       : Icons.error_outline_rounded,
                                   color: _bannerIsSuccess
                                       ? Colors.white
-                                      : theme.colorScheme.onErrorContainer,
+                                      : Theme.of(context)
+                                          .colorScheme
+                                          .onErrorContainer,
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
@@ -268,8 +365,9 @@ class _RequestedExpensesScreenState extends State<RequestedExpensesScreen> {
                                     style: TextStyle(
                                       color: _bannerIsSuccess
                                           ? Colors.white
-                                          : theme
-                                              .colorScheme.onErrorContainer,
+                                          : Theme.of(context)
+                                              .colorScheme
+                                              .onErrorContainer,
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
@@ -280,10 +378,12 @@ class _RequestedExpensesScreenState extends State<RequestedExpensesScreen> {
                                     Icons.close,
                                     color: _bannerIsSuccess
                                         ? Colors.white
-                                        : theme.colorScheme.onErrorContainer,
+                                        : Theme.of(context)
+                                            .colorScheme
+                                            .onErrorContainer,
                                   ),
-                                  onPressed: () => setState(
-                                      () => _showBanner = false),
+                                  onPressed: () =>
+                                      setState(() => _showBanner = false),
                                 ),
                               ],
                             ),
@@ -302,30 +402,92 @@ class _RequestedExpensesScreenState extends State<RequestedExpensesScreen> {
   }
 }
 
+// ── Filter chip widget ────────────────────────────────────────────────────────
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? color : Colors.transparent,
+          border: Border.all(color: color),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? Colors.white : color,
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Empty state ───────────────────────────────────────────────────────────────
+
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  final String filter;
+  const _EmptyState({required this.filter});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final message = filter == 'PENDING'
+        ? 'No pending approvals'
+        : filter == 'ACCEPTED'
+            ? 'No accepted expenses yet'
+            : 'No declined expenses yet';
+    final sub = filter == 'PENDING'
+        ? 'You have no expense shares awaiting your response.'
+        : filter == 'ACCEPTED'
+            ? 'Expenses you accept will appear here.'
+            : 'Expenses you decline will appear here.';
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.check_circle_outline,
-                size: 72, color: theme.colorScheme.primary),
+            Icon(
+              filter == 'PENDING'
+                  ? Icons.check_circle_outline
+                  : filter == 'ACCEPTED'
+                      ? Icons.thumb_up_outlined
+                      : Icons.thumb_down_outlined,
+              size: 72,
+              color: theme.colorScheme.primary,
+            ),
             const SizedBox(height: 16),
             Text(
-              'No pending approvals',
+              message,
               style: theme.textTheme.headlineSmall
                   ?.copyWith(fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
-              'You have no expense shares awaiting your response.',
+              sub,
               style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant),
               textAlign: TextAlign.center,
@@ -336,6 +498,8 @@ class _EmptyState extends StatelessWidget {
     );
   }
 }
+
+// ── Error state ───────────────────────────────────────────────────────────────
 
 class _ErrorState extends StatelessWidget {
   final String message;
@@ -352,10 +516,11 @@ class _ErrorState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, size: 72, color: theme.colorScheme.error),
+            Icon(Icons.error_outline,
+                size: 72, color: theme.colorScheme.error),
             const SizedBox(height: 16),
             Text(
-              'Could not load pending approvals',
+              'Could not load expenses',
               style: theme.textTheme.titleLarge
                   ?.copyWith(fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,

@@ -38,11 +38,12 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final raw = await _apiService.getRequestedExpenses();
       if (!mounted) return;
-      setState(() => _pendingApprovalsCount = raw.length);
-    } catch (_) {
-      // silently fail — badge is non-critical
+      final pendingOnly = raw.where((e) => e['vote_status'] == 'PENDING').toList();
+      setState(() => _pendingApprovalsCount = pendingOnly.length);
+    } catch (e) {
+      debugPrint('_loadPendingCount error: $e');
     }
-  }
+}
   Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
@@ -102,15 +103,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onItemTapped(int index) {
-    if (index == 0 && _pendingApprovalsCount > 0) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const RequestedExpensesScreen(),
-        ),
-      ).then((_) => _loadPendingCount());
-      return;
-    }
     setState(() => _selectedIndex = index);
   }
 
@@ -143,6 +135,30 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('Expense Tracker'),
         actions: [
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.how_to_vote_outlined),
+                tooltip: 'My Expense Shares',
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const RequestedExpensesScreen(),
+                    ),
+                  ).then((_) => _loadPendingCount());
+                },
+              ),
+              if (_pendingApprovalsCount > 0)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Badge(
+                    label: Text('$_pendingApprovalsCount'),
+                  ),
+                ),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.pending_actions_outlined),
             tooltip: 'Outstanding',
@@ -288,66 +304,133 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final theme = Theme.of(context);
 
-    return ListView.builder(
-      itemCount: _expenses.length,
-      itemBuilder: (context, index) {
-        final expense = _expenses[index];
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: ListTile(
-            leading: CircleAvatar(
-              radius: 22,
-              backgroundColor: theme.colorScheme.primaryContainer,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  child: Text(
-                    '\$${expense.amount.toStringAsFixed(0)}',
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: theme.colorScheme.onPrimaryContainer,
-                      fontWeight: FontWeight.w700,
+    // Group expenses by status
+    final Map<String, List<Expense>> grouped = {};
+    for (final expense in _expenses) {
+      final status = expense.status ?? 'UNKNOWN';
+      grouped.putIfAbsent(status, () => []).add(expense);
+    }
+
+    // Define display order and labels
+    final statusOrder = [
+      'PENDING',
+      'DISPUTED',
+      'FINALIZED',
+      'PARTIALLY_SETTLED',
+      'FULLY_SETTLED',
+    ];
+
+    final statusLabels = {
+      'PENDING': 'Pending',
+      'DISPUTED': 'Disputed',
+      'FINALIZED': 'Finalized',
+      'PARTIALLY_SETTLED': 'Partially Settled',
+      'FULLY_SETTLED': 'Fully Settled',
+    };
+
+    final statusColors = {
+      'PENDING': Colors.orange,
+      'DISPUTED': Colors.red,
+      'FINALIZED': Colors.blue,
+      'PARTIALLY_SETTLED': Colors.teal,
+      'FULLY_SETTLED': Colors.green,
+    };
+
+    // Build list of sections
+    final List<Widget> sections = [];
+    for (final status in statusOrder) {
+      final expenses = grouped[status];
+      if (expenses == null || expenses.isEmpty) continue;
+
+      sections.add(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+          child: Row(
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: statusColors[status] ?? Colors.grey,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                statusLabels[status] ?? status,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: statusColors[status] ?? Colors.grey,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(child: Divider(color: statusColors[status]?.withOpacity(0.3) ?? Colors.grey)),
+            ],
+          ),
+        ),
+      );
+
+      for (final expense in expenses) {
+        sections.add(
+          Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: ListTile(
+              leading: CircleAvatar(
+                radius: 22,
+                backgroundColor: theme.colorScheme.primaryContainer,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    child: Text(
+                      '\$${expense.amount.toStringAsFixed(0)}',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: theme.colorScheme.onPrimaryContainer,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-            title: Text(expense.description),
-            subtitle: Text(
-              '${expense.category ?? 'Uncategorized'} - ${expense.date.toString().split(' ')[0]}',
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min, // Crucial: prevents the Row from taking full width
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.payment, color: Colors.green),
-                  tooltip: 'Pay Share',
-                  onPressed: () async {
-                    // 1. Navigate to the Pay Page
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => PayExpenseScreen(expense: expense),
-                      ),
-                    );
-
-                    // 2. If the user successfully paid (result is true), refresh the list
-                    if (result == true) {
-                      _loadData();
-                    }
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.grey),
-                  onPressed: () => _deleteExpense(expense.id!),
-                ),
-              ],
+              title: Text(expense.description),
+              subtitle: Text(
+                '${expense.category ?? 'Uncategorized'} - ${expense.date.toString().split(' ')[0]}',
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.payment, color: Colors.green),
+                    tooltip: 'Pay Share',
+                    onPressed: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              PayExpenseScreen(expense: expense),
+                        ),
+                      );
+                      if (result == true) {
+                        _loadData();
+                      }
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.grey),
+                    onPressed: () => _deleteExpense(expense.id!),
+                  ),
+                ],
+              ),
             ),
           ),
         );
-      },
+      }
+    }
+
+    return ListView(
+      children: sections,
     );
-  }
+ }
 
   Widget _buildHouseholdsTab() {
     if (_household == null) {
