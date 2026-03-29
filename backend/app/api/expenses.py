@@ -89,7 +89,7 @@ def create_recurring_expense(
     if body.unit is None:
         raise HTTPException(status_code=400, detail="A recurrence frequency must be selected")
 
-    interval = body.interval or 1
+    interval = body.interval if body.interval is not None else 1
     if interval <= 0:
         raise HTTPException(status_code=400, detail="interval must be >= 1")
 
