@@ -328,6 +328,8 @@ def generate_due_recurring_expenses(
         else:
             raise ValueError("Recurring expense exceeds generation limit")
 
-        created_ids.extend(generate_recurring_charges(db=db, recurring=recurring, due_dates=due_dates))
+        created_ids.extend(
+            generate_recurring_charges(db=db, recurring=recurring, due_dates=due_dates)
+        )
 
     return created_ids

@@ -51,9 +51,7 @@ def migrate_sqlite_schema(engine: Engine) -> None:
         for old, new in renames.items():
             if old in cols and new not in cols:
                 logger.info("Migrating recurring_expenses: renaming %s -> %s", old, new)
-                conn.exec_driver_sql(
-                    f"ALTER TABLE recurring_expenses RENAME COLUMN {old} TO {new}"
-                )
+                conn.exec_driver_sql(f"ALTER TABLE recurring_expenses RENAME COLUMN {old} TO {new}")
 
         # Refresh columns after renames
         cols = [

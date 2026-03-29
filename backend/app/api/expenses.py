@@ -77,7 +77,9 @@ def create_recurring_expense(
     if not membership:
         raise HTTPException(status_code=400, detail="User is not currently in any household")
     if not membership.is_admin:
-        raise HTTPException(status_code=403, detail="Only household admins can create recurring expenses")
+        raise HTTPException(
+            status_code=403, detail="Only household admins can create recurring expenses"
+        )
 
     if not body.description:
         raise HTTPException(status_code=400, detail="Valid description is required.")
@@ -180,7 +182,9 @@ def create_recurring_expense(
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception:
         db.rollback()
-        raise HTTPException(status_code=500, detail="Database error during recurring expense creation") from None
+        raise HTTPException(
+            status_code=500, detail="Database error during recurring expense creation"
+        ) from None
 
     return RecurringExpenseCreateResponse(
         recurring_expense_id=recurring.id,
@@ -217,7 +221,9 @@ def generate_recurring_expenses(
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception:
         db.rollback()
-        raise HTTPException(status_code=500, detail="Failed to generate recurring charges") from None
+        raise HTTPException(
+            status_code=500, detail="Failed to generate recurring charges"
+        ) from None
 
     return RecurringExpenseGenerateResponse(
         created_expense_ids=created_ids,

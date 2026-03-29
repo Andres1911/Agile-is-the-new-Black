@@ -78,7 +78,9 @@ class TestRecurringExpenseGeneration:
             end_at=end_at,
             max_occurrences=None,
         )
-        created_ids = generate_recurring_charges(db=db, recurring=recurring, due_dates=preview.due_dates)
+        created_ids = generate_recurring_charges(
+            db=db, recurring=recurring, due_dates=preview.due_dates
+        )
         db.commit()
 
         assert len(created_ids) == 4
@@ -151,7 +153,9 @@ class TestRecurringExpenseGeneration:
             end_at=None,
             max_occurrences=4,
         )
-        created_ids = generate_recurring_charges(db=db, recurring=recurring, due_dates=preview.due_dates)
+        created_ids = generate_recurring_charges(
+            db=db, recurring=recurring, due_dates=preview.due_dates
+        )
         db.commit()
 
         assert len(created_ids) == 4

@@ -95,7 +95,10 @@ def given_user_logged_in(client, username, context):
     return context
 
 
-@when(parsers.parse('"{username}" specifies an expense with the following details'), target_fixture="context")
+@when(
+    parsers.parse('"{username}" specifies an expense with the following details'),
+    target_fixture="context",
+)
 def when_specifies_expense_details(username, datatable, context):
     data = _get_table_dicts(datatable)[0]
     context["description"] = data["description"]
@@ -116,7 +119,7 @@ def when_specifies_manual_split(client, db, username, datatable, context):
     manual_shares = []
     for row in _get_table_dicts(datatable):
         manual_shares.append(
-            {"user_id": name_to_id[row["payer"]], "amount": float(row["shareCAD"]) }
+            {"user_id": name_to_id[row["payer"]], "amount": float(row["shareCAD"])}
         )
 
     context["manual_shares"] = manual_shares
@@ -126,7 +129,9 @@ def when_specifies_manual_split(client, db, username, datatable, context):
 
 
 @when(
-    parsers.parse('"{username}" specifies the expense split equally with include_self="{is_inclusive}"'),
+    parsers.parse(
+        '"{username}" specifies the expense split equally with include_self="{is_inclusive}"'
+    ),
     target_fixture="context",
 )
 def when_specifies_equal_split(client, username, is_inclusive, context):
@@ -191,7 +196,7 @@ def then_recurring_created_successfully(client, context):
     assert resp.status_code == 201, resp.text
 
 
-@then(parsers.parse('the system generates the following recurring charges'))
+@then(parsers.parse("the system generates the following recurring charges"))
 def then_system_generates_charges(db, context, datatable):
     assert context["response"].status_code == 201
 
@@ -199,10 +204,7 @@ def then_system_generates_charges(db, context, datatable):
     desc = expected[0]["description"]
 
     expenses = (
-        db.query(Expense)
-        .filter(Expense.description == desc)
-        .order_by(Expense.date.asc())
-        .all()
+        db.query(Expense).filter(Expense.description == desc).order_by(Expense.date.asc()).all()
     )
 
     assert len(expenses) == len(expected)
