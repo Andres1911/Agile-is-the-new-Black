@@ -97,6 +97,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _currentUser = loadedUser;
         _household = loadedHousehold;
         _expenses = loadedExpenses;
+        _currentUserIsAdmin = loadedCurrentUserIsAdmin;
         _isLoading = false;
       });
       if (error != null) {
@@ -589,12 +590,14 @@ class _HomeScreenState extends State<HomeScreen> {
     List<dynamic> activeMembers = [];
     int? householdId;
     int? currentUserId;
+    bool currentUserIsAdmin = false;
 
     try {
       final membersData = await _apiService.fetchActiveMembers();
       activeMembers = membersData['members'];
       householdId = membersData['household_id'];
       currentUserId = membersData['current_user_id'];
+      currentUserIsAdmin = membersData['current_user_is_admin'] == true;
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context)
@@ -612,6 +615,8 @@ class _HomeScreenState extends State<HomeScreen> {
     bool splitEvenly = true;
     bool includeCreator = true;
     Map<int, String> manualInputs = {};
+
+    final recurring = _RecurringState();
 
     if (!context.mounted) return;
 
@@ -743,6 +748,13 @@ class _HomeScreenState extends State<HomeScreen> {
                             () => includeCreator = val ?? true,
                           ),
                         ),
+
+                        if (currentUserIsAdmin)
+                          ..._buildRecurringSectionWidgets(
+                            recurring,
+                            setStateDialog,
+                            context,
+                          ),
                     ],
                   ),
                 ),
@@ -822,7 +834,40 @@ class _HomeScreenState extends State<HomeScreen> {
                       finalManualShares = sharesList;
                     }
 
+                    final recurringError = _validateRecurring(recurring);
+                    if (recurringError != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(recurringError)),
+                      );
+                      return;
+                    }
+
                     try {
+                      if (recurring.isRecurring) {
+                        final payload = _buildRecurringPayload(
+                          amount: total,
+                          description: description,
+                          category: categoryController.text.isEmpty
+                              ? null
+                              : categoryController.text,
+                          splitEvenly: splitEvenly,
+                          includeCreator: finalIncludeCreator,
+                          manualShares: finalManualShares,
+                          recurring: recurring,
+                        );
+
+                        final resp = await _apiService.createRecurringExpense(payload);
+                        if (!context.mounted) return;
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(resp['detail'] ?? 'Recurring expense created'),
+                          ),
+                        );
+                        _loadData();
+                        return;
+                      }
+
                       await _apiService.createAndSplitExpense({
                         'amount': total,
                         'description': description,
@@ -862,12 +907,14 @@ class _HomeScreenState extends State<HomeScreen> {
     List<dynamic> activeMembers = [];
     int? householdId;
     int? currentUserId;
+    bool currentUserIsAdmin = false;
 
     try {
       final data = await _apiService.fetchActiveMembers();
       activeMembers = data['members'];
       householdId = data['household_id'];
       currentUserId = data['current_user_id'];
+      currentUserIsAdmin = data['current_user_is_admin'] == true;
     } catch (e) {
       if (!context.mounted) return;
       _showError('Failed to load household members: $e');
@@ -881,6 +928,8 @@ class _HomeScreenState extends State<HomeScreen> {
     bool splitEvenly = true;
     bool includeCreator = true;
     Map<int, String> manualInputs = {};
+
+    final recurring = _RecurringState();
 
     return showDialog(
       context: context,
@@ -988,6 +1037,13 @@ class _HomeScreenState extends State<HomeScreen> {
                             () => includeCreator = val ?? true,
                           ),
                         ),
+
+                      if (currentUserIsAdmin)
+                        ..._buildRecurringSectionWidgets(
+                          recurring,
+                          setStateDialog,
+                          context,
+                        ),
                     ],
                   ),
                 ),
@@ -1004,16 +1060,22 @@ class _HomeScreenState extends State<HomeScreen> {
                     final description = descriptionController.text.trim();
 
                     if (description.isEmpty) {
-                      Navigator.of(context).pop();
-                      _showError('Please enter a description');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Please enter a description'),
+                        ),
+                      );
                       return;
                     }
 
                     if (totalStr.isEmpty ||
                         double.tryParse(totalStr) == null ||
                         total <= 0) {
-                      Navigator.of(context).pop();
-                      _showError('Please enter a valid total amount');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Please enter a valid total amount'),
+                        ),
+                      );
                       return;
                     }
 
@@ -1030,9 +1092,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         final parsedValue = double.tryParse(rawValue);
 
                         if (parsedValue == null) {
-                          Navigator.of(context).pop();
-                          _showError(
-                            'Invalid amount for member $userId: "$rawValue"',
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Invalid amount for member $userId: "$rawValue"',
+                              ),
+                            ),
                           );
                           return;
                         }
@@ -1048,15 +1113,51 @@ class _HomeScreenState extends State<HomeScreen> {
                       }
 
                       if (sharesList.isEmpty) {
-                        Navigator.of(context).pop();
-                        _showError('Please fill at least one share');
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Please fill at least one share'),
+                          ),
+                        );
                         return;
                       }
 
                       finalManualShares = sharesList;
                     }
 
+                    final recurringError = _validateRecurring(recurring);
+                    if (recurringError != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(recurringError)),
+                      );
+                      return;
+                    }
+
                     try {
+                      if (recurring.isRecurring) {
+                        final payload = _buildRecurringPayload(
+                          amount: total,
+                          description: description,
+                          category: categoryController.text.isEmpty
+                              ? null
+                              : categoryController.text,
+                          splitEvenly: splitEvenly,
+                          includeCreator: finalIncludeCreator,
+                          manualShares: finalManualShares,
+                          recurring: recurring,
+                        );
+
+                        final resp = await _apiService.createRecurringExpense(payload);
+                        if (!context.mounted) return;
+                        Navigator.pop(context);
+                        _loadData();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(resp['detail'] ?? 'Recurring expense created'),
+                          ),
+                        );
+                        return;
+                      }
+
                       await _apiService.createAndSplitExpense({
                         'amount': total,
                         'description': description,
@@ -1074,7 +1175,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       _loadData();
                     } catch (e) {
                       if (!context.mounted) return;
-                      _showError('Failed to create expense: $e');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Failed to create expense: $e')),
+                      );
                     }
                   },
                   style: ElevatedButton.styleFrom(
@@ -1093,6 +1196,178 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ── Recurring-expense helpers ────────────────────────────────────────────
+
+  static String _formatDate(DateTime dt) {
+    final d = DateTime(dt.year, dt.month, dt.day);
+    return d.toIso8601String().split('T').first;
+  }
+
+  static String? _validateRecurring(_RecurringState state) {
+    if (!state.isRecurring) return null;
+    if (state.recurrenceUnit == null) return 'Please select a frequency';
+    if (state.startAt == null) return 'Please select a start date';
+    if (state.endCondition == 'date') {
+      if (state.endAt == null) return 'Please select an end date';
+      if (state.endAt!.isBefore(state.startAt!)) {
+        return 'End date must be after or equal to the start date';
+      }
+    } else {
+      final occ = int.tryParse(state.occurrencesController.text.trim());
+      if (occ == null || occ <= 0) {
+        return 'Please enter a valid number of occurrences';
+      }
+    }
+    return null;
+  }
+
+  static Map<String, dynamic> _buildRecurringPayload({
+    required double amount,
+    required String description,
+    required String? category,
+    required bool splitEvenly,
+    required bool includeCreator,
+    required List<Map<String, dynamic>>? manualShares,
+    required _RecurringState recurring,
+  }) {
+    final payload = <String, dynamic>{
+      'amount': amount,
+      'description': description,
+      'category': category,
+      'split_evenly': splitEvenly,
+      'include_creator': includeCreator,
+      'manual_shares': splitEvenly ? null : manualShares,
+      'interval': 1,
+      'unit': recurring.recurrenceUnit,
+      'start_at': recurring.startAt!.toIso8601String(),
+    };
+    if (recurring.endCondition == 'date') {
+      payload['end_at'] = recurring.endAt!.toIso8601String();
+    } else {
+      payload['max_occurrences'] =
+          int.parse(recurring.occurrencesController.text.trim());
+    }
+    return payload;
+  }
+
+  List<Widget> _buildRecurringSectionWidgets(
+    _RecurringState state,
+    StateSetter setStateDialog,
+    BuildContext context,
+  ) {
+    return [
+      const Divider(height: 30),
+      SwitchListTile(
+        title: const Text('Recurring'),
+        value: state.isRecurring,
+        onChanged: (val) => setStateDialog(() {
+          state.isRecurring = val;
+          if (!val) state.reset();
+        }),
+      ),
+      if (state.isRecurring) ...[
+        InputDecorator(
+          decoration: const InputDecoration(labelText: 'Frequency'),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: state.recurrenceUnit,
+              hint: const Text('Select'),
+              isExpanded: true,
+              items: const [
+                DropdownMenuItem(value: 'DAILY', child: Text('Daily')),
+                DropdownMenuItem(value: 'WEEKLY', child: Text('Weekly')),
+                DropdownMenuItem(value: 'MONTHLY', child: Text('Monthly')),
+                DropdownMenuItem(value: 'YEARLY', child: Text('Yearly')),
+              ],
+              onChanged: (val) =>
+                  setStateDialog(() => state.recurrenceUnit = val),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Start date'),
+          subtitle: Text(
+            state.startAt == null ? 'Select' : _formatDate(state.startAt!),
+          ),
+          trailing: const Icon(Icons.calendar_today),
+          onTap: () async {
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: state.startAt ?? DateTime.now(),
+              firstDate: DateTime(2000),
+              lastDate: DateTime(2100),
+            );
+            if (picked != null) {
+              setStateDialog(
+                () => state.startAt =
+                    DateTime.utc(picked.year, picked.month, picked.day),
+              );
+            }
+          },
+        ),
+        const SizedBox(height: 8),
+        InputDecorator(
+          decoration: const InputDecoration(labelText: 'End condition'),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: state.endCondition,
+              isExpanded: true,
+              items: const [
+                DropdownMenuItem(
+                  value: 'date',
+                  child: Text('End by date'),
+                ),
+                DropdownMenuItem(
+                  value: 'occurrences',
+                  child: Text('End by occurrences'),
+                ),
+              ],
+              onChanged: (val) =>
+                  setStateDialog(() => state.endCondition = val ?? 'date'),
+            ),
+          ),
+        ),
+        if (state.endCondition == 'date') ...[
+          const SizedBox(height: 8),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('End date'),
+            subtitle: Text(
+              state.endAt == null ? 'Select' : _formatDate(state.endAt!),
+            ),
+            trailing: const Icon(Icons.calendar_today),
+            onTap: () async {
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: state.endAt ?? (state.startAt ?? DateTime.now()),
+                firstDate: DateTime(2000),
+                lastDate: DateTime(2100),
+              );
+              if (picked != null) {
+                setStateDialog(
+                  () => state.endAt =
+                      DateTime.utc(picked.year, picked.month, picked.day),
+                );
+              }
+            },
+          ),
+        ],
+        if (state.endCondition == 'occurrences') ...[
+          const SizedBox(height: 8),
+          TextField(
+            controller: state.occurrencesController,
+            decoration: const InputDecoration(labelText: 'Occurrences'),
+            keyboardType: TextInputType.number,
+          ),
+        ],
+      ],
+    ];
+  }
+
+  // ── End recurring-expense helpers ────────────────────────────────────────
+
   Future<void> _deleteExpense(int id) async {
     try {
       await _apiService.deleteExpense(id);
@@ -1101,5 +1376,26 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
       _showError('Failed to delete expense: $e');
     }
+  }
+}
+
+/// Mutable state holder for the recurring-expense form fields.
+/// Passed by reference into [_HomeScreenState._buildRecurringSectionWidgets]
+/// so that both add-expense dialogs share the same UI and logic.
+class _RecurringState {
+  bool isRecurring = false;
+  String? recurrenceUnit;
+  DateTime? startAt;
+  DateTime? endAt;
+  String endCondition = 'date';
+  final TextEditingController occurrencesController = TextEditingController();
+
+  /// Clears all recurring fields (called when the toggle is switched off).
+  void reset() {
+    recurrenceUnit = null;
+    startAt = null;
+    endAt = null;
+    endCondition = 'date';
+    occurrencesController.text = '';
   }
 }

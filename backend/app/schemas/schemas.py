@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr
 
-from app.models.models import ExpenseStatus, VoteStatus
+from app.models.models import ExpenseStatus, RecurrenceUnit, VoteStatus
 
 # ── User schemas ──────────────────────────────────────────────────────────
 
@@ -182,6 +182,66 @@ class ExpenseCreate(BaseModel):
     split_evenly: bool
     include_creator: bool
     manual_shares: list[ManualShare] | None = None
+
+
+# ── Recurring expense schemas ─────────────────────────────────────────────
+
+
+class RecurringExpenseCreate(BaseModel):
+    """Create a recurring expense template.
+
+    Notes:
+    - `unit` + `interval` define frequency (e.g., interval=2, unit=WEEKLY).
+    - `unit` may be omitted so the API can return a domain validation error.
+    - End condition can be `end_at`, `max_occurrences`, both, or neither.
+    """
+
+    description: str
+    amount: float
+    category: str | None = None
+
+    split_evenly: bool
+    include_creator: bool
+    manual_shares: list[ManualShare] | None = None
+
+    interval: int = 1
+    unit: RecurrenceUnit | None = None
+
+    start_at: datetime | None = None
+    end_at: datetime | None = None
+    max_occurrences: int | None = None
+
+
+class RecurringExpense(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    description: str
+    amount: float
+    category: str | None = None
+    split_evenly: bool
+    include_creator: bool
+    interval: int
+    unit: RecurrenceUnit
+    start_at: datetime
+    next_due_at: datetime
+    end_at: datetime | None = None
+    max_occurrences: int | None = None
+    occurrences_generated: int
+    is_active: bool
+    creator_id: int
+    household_id: int
+
+
+class RecurringExpenseCreateResponse(BaseModel):
+    recurring_expense_id: int
+    created_expense_ids: list[int]
+    detail: str
+
+
+class RecurringExpenseGenerateResponse(BaseModel):
+    created_expense_ids: list[int]
+    created_count: int
 
 
 class ConfirmPaymentRequest(BaseModel):

@@ -1,7 +1,17 @@
 import enum
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Enum, Float, ForeignKey, Integer, String
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import relationship
 
 from app.db.database import Base
@@ -23,6 +33,13 @@ class VoteStatus(enum.StrEnum):
     PENDING = "PENDING"
     ACCEPTED = "ACCEPTED"
     REJECTED = "REJECTED"
+
+
+class RecurrenceUnit(enum.StrEnum):
+    DAILY = "DAILY"
+    WEEKLY = "WEEKLY"
+    MONTHLY = "MONTHLY"
+    YEARLY = "YEARLY"
 
 
 # ---------------------------------------------------------------------------
@@ -138,3 +155,83 @@ class ExpenseShare(Base):
     # Relationships
     expense = relationship("Expense", back_populates="shares")
     user = relationship("User", back_populates="expense_shares")
+
+
+# ---------------------------------------------------------------------------
+# RecurringExpense
+# ---------------------------------------------------------------------------
+
+
+class RecurringExpense(Base):
+    __tablename__ = "recurring_expenses"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    description = Column(String, nullable=False)
+    amount = Column(Float, nullable=False)
+    category = Column(String)
+
+    split_evenly = Column(Boolean, default=True, nullable=False)
+    include_creator = Column(Boolean, default=True, nullable=False)
+
+    interval = Column(Integer, nullable=False, default=1)
+    unit = Column(Enum(RecurrenceUnit, native_enum=False), nullable=False)
+
+    start_at = Column(DateTime, nullable=False)
+    next_due_at = Column(DateTime, nullable=False)
+    end_at = Column(DateTime, nullable=True)
+    max_occurrences = Column(Integer, nullable=True)
+    occurrences_generated = Column(Integer, nullable=False, default=0)
+    is_active = Column(Boolean, default=True, nullable=False)
+
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
+    updated_at = Column(DateTime, default=lambda: datetime.now(UTC))
+
+    creator_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    household_id = Column(Integer, ForeignKey("households.id"), nullable=False)
+
+    creator = relationship("User")
+    household = relationship("Household")
+    template_shares = relationship(
+        "RecurringExpenseShare",
+        back_populates="recurring_expense",
+        cascade="all, delete-orphan",
+    )
+    instances = relationship(
+        "RecurringExpenseInstance",
+        back_populates="recurring_expense",
+        cascade="all, delete-orphan",
+    )
+
+
+class RecurringExpenseShare(Base):
+    __tablename__ = "recurring_expense_shares"
+
+    id = Column(Integer, primary_key=True, index=True)
+    recurring_expense_id = Column(
+        Integer, ForeignKey("recurring_expenses.id"), nullable=False, index=True
+    )
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    amount_owed = Column(Float, nullable=False, default=0.0)
+
+    recurring_expense = relationship("RecurringExpense", back_populates="template_shares")
+    user = relationship("User")
+
+
+class RecurringExpenseInstance(Base):
+    __tablename__ = "recurring_expense_instances"
+    __table_args__ = (
+        UniqueConstraint("recurring_expense_id", "due_at", name="uq_recurring_due_at"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    recurring_expense_id = Column(
+        Integer, ForeignKey("recurring_expenses.id"), nullable=False, index=True
+    )
+    expense_id = Column(Integer, ForeignKey("expenses.id"), nullable=False, index=True)
+    occurrence_number = Column(Integer, nullable=False)
+    due_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
+
+    recurring_expense = relationship("RecurringExpense", back_populates="instances")
+    expense = relationship("Expense")
