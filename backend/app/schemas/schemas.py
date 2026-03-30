@@ -192,6 +192,7 @@ class RecurringExpenseCreate(BaseModel):
 
     Notes:
     - `unit` + `interval` define frequency (e.g., interval=2, unit=WEEKLY).
+    - `unit` may be omitted so the API can return a domain validation error.
     - End condition can be `end_at`, `max_occurrences`, both, or neither.
     """
 
@@ -204,7 +205,7 @@ class RecurringExpenseCreate(BaseModel):
     manual_shares: list[ManualShare] | None = None
 
     interval: int = 1
-    unit: RecurrenceUnit
+    unit: RecurrenceUnit | None = None
 
     start_at: datetime | None = None
     end_at: datetime | None = None
