@@ -203,8 +203,8 @@ class RecurringExpenseCreate(BaseModel):
     include_creator: bool
     manual_shares: list[ManualShare] | None = None
 
-    interval: int | None = None
-    unit: RecurrenceUnit | None = None
+    interval: int = 1
+    unit: RecurrenceUnit
 
     start_at: datetime | None = None
     end_at: datetime | None = None
