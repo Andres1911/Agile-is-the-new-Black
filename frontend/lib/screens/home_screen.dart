@@ -9,6 +9,7 @@ import 'pay_expense_screen.dart';
 import 'outstanding_expenses_screen.dart';
 import 'scan_receipt_screen.dart';
 import 'requested_expenses_screen.dart';
+import 'household_details_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -446,14 +447,29 @@ class _HomeScreenState extends State<HomeScreen> {
         Card(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: ListTile(
+            onTap: () async {
+              // Navigate to the new details screen
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => HouseholdDetailsScreen(
+                    household: _household!,
+                    currentUser: _currentUser!,
+                  ),
+                ),
+              );
+
+              // If the user left the household, result will be true
+              if (result == true) {
+                _loadData(); // Refresh the home screen to show the "No households" state
+              }
+            },
             leading: const CircleAvatar(
               child: Icon(Icons.home),
             ),
             title: Text(household.name),
             subtitle: Text(household.address ?? household.description ?? 'No description'),
-            trailing: household.inviteCode != null
-                ? Text(household.inviteCode!)
-                : null,
+            trailing: household.inviteCode != null ? Text(household.inviteCode!) : null,
           ),
         ),
       ],
