@@ -5,12 +5,18 @@ from datetime import datetime
 from PIL import Image
 
 try:
+    from pillow_heif import register_heif_opener
+    register_heif_opener()
+except ImportError:
+    pass
+
+try:
     import pytesseract
 except ImportError:
     pytesseract = None
 
 
-SUPPORTED_EXTENSIONS = {"jpg", "jpeg", "png", "heic"}
+SUPPORTED_EXTENSIONS = {"jpg", "jpeg", "png", "heic", "heif"}
 
 DATE_PATTERNS = [
     r"(\d{4}[-/]\d{2}[-/]\d{2})",
@@ -49,6 +55,17 @@ SKIP_KEYWORDS = {
     "gst",
     "pst",
 }
+
+
+def detect_format_from_bytes(data: bytes) -> str | None:
+    if data[:3] == b"\xff\xd8\xff":
+        return "jpeg"
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return "png"
+    if len(data) >= 12:
+        if data[4:8] == b"ftyp" and data[8:12] in (b"heic", b"heix", b"mif1"):
+            return "heic"
+    return None
 
 
 def validate_file_extension(filename: str) -> str | None:

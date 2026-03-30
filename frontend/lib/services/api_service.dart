@@ -1,6 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
+import 'package:mime/mime.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
@@ -392,6 +395,13 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> scanReceipt(File imageFile) async {
+    final bytes = await imageFile.readAsBytes();
+    final filename = imageFile.path.split('/').last;
+    return scanReceiptBytes(bytes, filename);
+  }
+
+  Future<Map<String, dynamic>> scanReceiptBytes(
+      Uint8List bytes, String filename) async {
     await _loadToken();
 
     final uri = Uri.parse('$baseUrl/expenses/scan-receipt');
@@ -401,8 +411,15 @@ class ApiService {
       request.headers['Authorization'] = 'Bearer $_token';
     }
 
+    final mimeType = lookupMimeType(filename) ?? 'image/jpeg';
+
     request.files.add(
-      await http.MultipartFile.fromPath('file', imageFile.path),
+      http.MultipartFile.fromBytes(
+        'file',
+        bytes,
+        filename: filename,
+        contentType: MediaType.parse(mimeType),
+      ),
     );
 
     final streamed = await request.send();

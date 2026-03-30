@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/api_service.dart';
@@ -25,7 +25,7 @@ class _ScanReceiptScreenState extends State<ScanReceiptScreen> {
   bool _isProcessing = false;
   String? _errorMessage;
   String? _successMessage;
-  File? _selectedImage;
+  Uint8List? _selectedImageBytes;
 
   String? _date;
   double? _totalAmount;
@@ -61,24 +61,17 @@ class _ScanReceiptScreenState extends State<ScanReceiptScreen> {
       );
       if (picked == null) return;
 
-      final file = File(picked.path);
-      final ext = picked.path.split('.').last.toLowerCase();
-      if (!{'jpg', 'jpeg', 'png', 'heic'}.contains(ext)) {
-        setState(() {
-          _errorMessage =
-              'Unsupported file format. Please upload a JPG, PNG, or HEIC image';
-        });
-        return;
-      }
+      final bytes = await picked.readAsBytes();
+      final name = picked.name;
 
       setState(() {
-        _selectedImage = file;
+        _selectedImageBytes = bytes;
         _errorMessage = null;
         _successMessage = null;
         _hasResults = false;
       });
 
-      await _processImage(file);
+      await _processImage(bytes, name);
     } catch (e) {
       if (!mounted) return;
       if (e.toString().contains('camera_access_denied') ||
@@ -95,14 +88,14 @@ class _ScanReceiptScreenState extends State<ScanReceiptScreen> {
     }
   }
 
-  Future<void> _processImage(File file) async {
+  Future<void> _processImage(Uint8List bytes, String filename) async {
     setState(() {
       _isProcessing = true;
       _errorMessage = null;
     });
 
     try {
-      final result = await _apiService.scanReceipt(file);
+      final result = await _apiService.scanReceiptBytes(bytes, filename);
 
       _date = result['date'] as String?;
       _totalAmount = result['totalAmount'] != null
@@ -299,11 +292,11 @@ class _ScanReceiptScreenState extends State<ScanReceiptScreen> {
                 const SizedBox(height: 16),
               ],
 
-              if (_selectedImage != null) ...[
+              if (_selectedImageBytes != null) ...[
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.file(
-                    _selectedImage!,
+                  child: Image.memory(
+                    _selectedImageBytes!,
                     height: 150,
                     fit: BoxFit.cover,
                   ),
@@ -413,7 +406,7 @@ class _ScanReceiptScreenState extends State<ScanReceiptScreen> {
                       onPressed: () {
                         setState(() {
                           _hasResults = false;
-                          _selectedImage = null;
+                          _selectedImageBytes = null;
                           _successMessage = null;
                         });
                       },

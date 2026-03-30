@@ -29,7 +29,7 @@ from app.schemas.schemas import (
 from app.schemas.schemas import (
     RecurringExpense as RecurringExpenseSchema,
 )
-from app.services.receipt_parser import parse_receipt, validate_file_extension
+from app.services.receipt_parser import detect_format_from_bytes, parse_receipt, validate_file_extension
 from app.services.recurring_expenses import (
     generate_due_recurring_expenses,
     generate_recurring_charges,
@@ -611,16 +611,18 @@ async def scan_receipt(
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided")
 
+    contents = await file.read()
+    if len(contents) == 0:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+
     ext = validate_file_extension(file.filename)
+    if ext is None:
+        ext = detect_format_from_bytes(contents)
     if ext is None:
         raise HTTPException(
             status_code=400,
             detail="Unsupported file format. Please upload a JPG, PNG, or HEIC image",
         )
-
-    contents = await file.read()
-    if len(contents) == 0:
-        raise HTTPException(status_code=400, detail="Uploaded file is empty")
 
     if len(contents) > 10 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="File too large. Maximum size is 10 MB")
