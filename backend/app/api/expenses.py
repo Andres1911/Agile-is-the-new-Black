@@ -20,12 +20,14 @@ from app.schemas.schemas import (
     ConfirmPaymentRequest,
     ExpenseCreate,
     OutstandingExpense,
-    RecurringExpense as RecurringExpenseSchema,
     RecurringExpenseCreate,
     RecurringExpenseCreateResponse,
     RecurringExpenseGenerateResponse,
     RequestedExpense,
     RespondExpenseShareRequest,
+)
+from app.schemas.schemas import (
+    RecurringExpense as RecurringExpenseSchema,
 )
 from app.services.receipt_parser import parse_receipt, validate_file_extension
 from app.services.recurring_expenses import (
