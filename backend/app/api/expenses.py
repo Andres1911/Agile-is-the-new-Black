@@ -29,7 +29,11 @@ from app.schemas.schemas import (
 from app.schemas.schemas import (
     RecurringExpense as RecurringExpenseSchema,
 )
-from app.services.receipt_parser import detect_format_from_bytes, parse_receipt, validate_file_extension
+from app.services.receipt_parser import (
+    detect_format_from_bytes,
+    parse_receipt,
+    validate_file_extension,
+)
 from app.services.recurring_expenses import (
     generate_due_recurring_expenses,
     generate_recurring_charges,
