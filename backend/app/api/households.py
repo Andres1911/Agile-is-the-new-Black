@@ -404,6 +404,7 @@ def leave_household(
         was_last_member=was_last_member,
     )
 
+
 @router.post("/{household_name}/debts/simplify")
 def simplify_household_debts(
     household_name: str,
