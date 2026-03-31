@@ -1,8 +1,8 @@
 from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-
 
 from app.api.auth import get_current_user
 from app.core.invite_codes import generate_unique_invite_code
