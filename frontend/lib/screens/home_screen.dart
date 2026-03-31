@@ -406,9 +406,55 @@ class _HomeScreenState extends State<HomeScreen> {
     return ListView(children: sections);
   }
 
+  List<dynamic> _householdMembers = [];
+  bool _loadingMembers = false;
+  bool _simplifying = false;
+
+  Future<void> _loadHouseholdMembers() async {
+    if (_loadingMembers) return;
+    setState(() => _loadingMembers = true);
+    try {
+      final data = await _apiService.fetchActiveMembers();
+      if (mounted) {
+        setState(() {
+          _householdMembers = data['members'] as List<dynamic>? ?? [];
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to load members: $e');
+    } finally {
+      if (mounted) setState(() => _loadingMembers = false);
+    }
+  }
+
+  Future<void> _simplifyDebts() async {
+    if (_household == null || _simplifying) return;
+    setState(() => _simplifying = true);
+    try {
+      final result = await _apiService.simplifyDebts(_household!.name);
+      if (mounted) {
+        final message = result['message'] as String? ?? 'Debts simplified';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+        _loadData();
+      }
+    } catch (e) {
+      if (mounted) {
+        _showError(e.toString().replaceFirst('Exception: ', ''));
+      }
+    } finally {
+      if (mounted) setState(() => _simplifying = false);
+    }
+  }
+
   Widget _buildHouseholdsTab() {
     if (_household == null) {
       return const Center(child: Text('No households yet. Create your first household!'));
+    }
+
+    if (_householdMembers.isEmpty && !_loadingMembers) {
+      _loadHouseholdMembers();
     }
 
     final household = _household!;
@@ -417,6 +463,118 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         Card(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const CircleAvatar(child: Icon(Icons.home)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            household.name,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          if (household.address != null ||
+                              household.description != null)
+                            Text(
+                              household.address ?? household.description!,
+                              style: TextStyle(color: Colors.grey.shade600),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                if (household.inviteCode != null) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Icon(Icons.vpn_key, size: 16),
+                      const SizedBox(width: 8),
+                      SelectableText(
+                        'Invite code: ${household.inviteCode}',
+                        style: const TextStyle(fontFamily: 'monospace'),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+
+        // Members section
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Members',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              IconButton(
+                icon: const Icon(Icons.refresh, size: 20),
+                onPressed: _loadHouseholdMembers,
+              ),
+            ],
+          ),
+        ),
+        if (_loadingMembers)
+          const Center(child: Padding(
+            padding: EdgeInsets.all(16),
+            child: CircularProgressIndicator(),
+          ))
+        else if (_householdMembers.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Text('No members found.'),
+          )
+        else
+          ..._householdMembers.map((member) {
+            final username = member['username'] as String? ?? '';
+            final fullName = member['full_name'] as String?;
+            final isAdmin = member['is_admin'] == true;
+            return Card(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: ListTile(
+                leading: CircleAvatar(
+                  child: Text(username.isNotEmpty ? username[0].toUpperCase() : '?'),
+                ),
+                title: Text(fullName ?? username),
+                subtitle: Text('@$username'),
+                trailing: isAdmin
+                    ? const Chip(label: Text('Admin', style: TextStyle(fontSize: 12)))
+                    : null,
+              ),
+            );
+          }),
+
+        // Simplify Debts button
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: ElevatedButton.icon(
+            onPressed: _simplifying ? null : _simplifyDebts,
+            icon: _simplifying
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.auto_fix_high),
+            label: Text(_simplifying ? 'Simplifying...' : 'Simplify Debts'),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+            ),
           child: ListTile(
             onTap: () async {
               // Your Detail Screen Navigation

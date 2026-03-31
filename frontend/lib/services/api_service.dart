@@ -269,6 +269,22 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> simplifyDebts(String householdName) async {
+    await _loadToken();
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/households/$householdName/debts/simplify'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      final error = jsonDecode(response.body);
+      throw Exception(error['detail'] ?? 'Failed to simplify debts');
+    }
+  }
+
   // Household endpoints
   Future<Map<String, dynamic>?> getMyHousehold() async {
     await _loadToken();
