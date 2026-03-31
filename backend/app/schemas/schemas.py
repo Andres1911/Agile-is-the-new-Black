@@ -92,6 +92,11 @@ class Household(HouseholdBase):
 
 class HouseholdWithMembers(Household):
     members: list[HouseholdMemberWithUser] = []
+    
+class LeaveHouseholdResponse(BaseModel):
+    message: str
+    household_id: int
+    was_last_member: bool
 
 
 # ── ExpenseShare schemas ─────────────────────────────────────────────────
@@ -244,15 +249,6 @@ class RecurringExpenseGenerateResponse(BaseModel):
     created_count: int
 
 
-class ExpenseEditAmount(BaseModel):
-    """Request body for editing an expense amount and resplitting shares."""
-
-    amount: float
-    split_evenly: bool = False
-    include_self: bool = False
-    manual_shares: list[ManualShare] | None = None
-
-
 class ConfirmPaymentRequest(BaseModel):
     """Request body for confirming payment of an expense share."""
 
@@ -275,9 +271,3 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: str | None = None
-
-
-class ResolveDisputeRequest(BaseModel):
-    """Request body for an admin to resolve a disputed expense (ID016)."""
-
-    decision: Literal["VALID", "INVALID", "VALIDATE", "INVALIDATE"]
