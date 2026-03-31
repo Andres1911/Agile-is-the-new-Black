@@ -9,8 +9,7 @@ import 'pay_expense_screen.dart';
 import 'outstanding_expenses_screen.dart';
 import 'scan_receipt_screen.dart';
 import 'requested_expenses_screen.dart';
-import 'household_details_screen.dart'; // From your branch
-import '../widgets/expense_response_notification_card.dart'; // From main branch
+import '../widgets/expense_response_notification_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -575,19 +574,6 @@ class _HomeScreenState extends State<HomeScreen> {
             style: ElevatedButton.styleFrom(
               minimumSize: const Size.fromHeight(48),
             ),
-          child: ListTile(
-            onTap: () async {
-              // Your Detail Screen Navigation
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => HouseholdDetailsScreen(household: _household!, currentUser: _currentUser!)),
-              );
-              if (result == true) _loadData();
-            },
-            leading: const CircleAvatar(child: Icon(Icons.home)),
-            title: Text(household.name),
-            subtitle: Text(household.address ?? household.description ?? 'No description'),
-            trailing: household.inviteCode != null ? Text(household.inviteCode!) : null,
           ),
         ),
       ],
