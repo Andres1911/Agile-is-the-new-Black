@@ -275,3 +275,9 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: str | None = None
+
+
+class ResolveDisputeRequest(BaseModel):
+    """Request body for an admin to resolve a disputed expense (ID016)."""
+
+    decision: Literal["VALID", "INVALID", "VALIDATE", "INVALIDATE"]

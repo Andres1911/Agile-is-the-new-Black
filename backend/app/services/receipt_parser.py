@@ -6,6 +6,7 @@ from PIL import Image
 
 try:
     from pillow_heif import register_heif_opener
+
     register_heif_opener()
 except ImportError:
     pass
@@ -62,9 +63,8 @@ def detect_format_from_bytes(data: bytes) -> str | None:
         return "jpeg"
     if data[:8] == b"\x89PNG\r\n\x1a\n":
         return "png"
-    if len(data) >= 12:
-        if data[4:8] == b"ftyp" and data[8:12] in (b"heic", b"heix", b"mif1"):
-            return "heic"
+    if len(data) >= 12 and data[4:8] == b"ftyp" and data[8:12] in (b"heic", b"heix", b"mif1"):
+        return "heic"
     return None
 
 

@@ -479,6 +479,32 @@ class ApiService {
       throw Exception(error['detail'] ?? 'Failed to respond to expense share');
     }
   }
+
+  Future<List<dynamic>> getActiveHouseholdMembers() async {
+    await _loadToken();
+    final response = await http.get(
+      Uri.parse('$baseUrl/households/me/active-household-members'),
+      headers: _getHeaders(),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return (data['members'] as List<dynamic>? ?? []);
+    }
+    throw Exception('Failed to load members');
+  }
+
+  Future<void> leaveHousehold(int householdId) async {
+    await _loadToken();
+    final response = await http.post(
+      Uri.parse('$baseUrl/households/$householdId/leave'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode != 200) {
+      final error = jsonDecode(response.body);
+      throw Exception(error['detail'] ?? 'Failed to leave household');
+    }
+  }
 }
 
   
