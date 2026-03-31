@@ -83,11 +83,7 @@ def given_existing_expense(db, username, datatable, context):
     data = get_table_dicts(datatable)[0]
     user = db.query(User).filter(User.username == username).first()
 
-    membership = (
-        db.query(HouseholdMember)
-        .filter(HouseholdMember.user_id == user.id)
-        .first()
-    )
+    membership = db.query(HouseholdMember).filter(HouseholdMember.user_id == user.id).first()
 
     category = data.get("category")
     if not category or category == "None":
@@ -277,9 +273,7 @@ def then_verify_expense_shares(db, context, datatable):
         )
 
         expected_is_paid = expected["is_paid"].strip().lower() == "true"
-        assert actual.is_paid == expected_is_paid, (
-            f"is_paid mismatch for {user.username}"
-        )
+        assert actual.is_paid == expected_is_paid, f"is_paid mismatch for {user.username}"
 
         expected_vote = VoteStatus[expected["vote_status"].strip().upper()]
         assert actual.vote_status == expected_vote, (

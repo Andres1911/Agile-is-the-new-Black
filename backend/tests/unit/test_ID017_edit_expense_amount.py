@@ -51,14 +51,16 @@ def _create_expense_with_shares(creator_id, household_id, amount, description, s
     db.flush()
 
     for s in shares:
-        db.add(ExpenseShare(
-            expense_id=expense.id,
-            user_id=s["user_id"],
-            amount_owed=s["amount_owed"],
-            paid_amount=s.get("paid_amount", 0.0),
-            is_paid=s.get("is_paid", False),
-            vote_status=s.get("vote_status", VoteStatus.PENDING),
-        ))
+        db.add(
+            ExpenseShare(
+                expense_id=expense.id,
+                user_id=s["user_id"],
+                amount_owed=s["amount_owed"],
+                paid_amount=s.get("paid_amount", 0.0),
+                is_paid=s.get("is_paid", False),
+                vote_status=s.get("vote_status", VoteStatus.PENDING),
+            )
+        )
     db.commit()
     expense_id = expense.id
     db.close()
@@ -263,7 +265,10 @@ class TestEditExpenseAmountFailCases:
             headers=headers,
         )
         assert resp.status_code == 400
-        assert "split amounts 80.00 cad do not equal expense total 100.00 cad" in resp.json()["detail"].lower()
+        assert (
+            "split amounts 80.00 cad do not equal expense total 100.00 cad"
+            in resp.json()["detail"].lower()
+        )
 
     def test_ID017_negative_amount(self, client):
         """Error flow: negative amount."""
@@ -309,9 +314,24 @@ class TestEditExpenseAmountFailCases:
             description="Hydro Bill",
             status=ExpenseStatus.FINALIZED,
             shares=[
-                {"user_id": ids["Alice"], "amount_owed": 100.00, "is_paid": True, "vote_status": VoteStatus.ACCEPTED},
-                {"user_id": ids["Bob"], "amount_owed": 25.00, "is_paid": True, "vote_status": VoteStatus.ACCEPTED},
-                {"user_id": ids["Cara"], "amount_owed": 25.00, "is_paid": True, "vote_status": VoteStatus.ACCEPTED},
+                {
+                    "user_id": ids["Alice"],
+                    "amount_owed": 100.00,
+                    "is_paid": True,
+                    "vote_status": VoteStatus.ACCEPTED,
+                },
+                {
+                    "user_id": ids["Bob"],
+                    "amount_owed": 25.00,
+                    "is_paid": True,
+                    "vote_status": VoteStatus.ACCEPTED,
+                },
+                {
+                    "user_id": ids["Cara"],
+                    "amount_owed": 25.00,
+                    "is_paid": True,
+                    "vote_status": VoteStatus.ACCEPTED,
+                },
             ],
         )
 
@@ -345,9 +365,27 @@ class TestEditExpenseAmountFailCases:
             description="Hydro Bill",
             status=ExpenseStatus.FULLY_SETTLED,
             shares=[
-                {"user_id": ids["Alice"], "amount_owed": 50.00, "paid_amount": 50.00, "is_paid": True, "vote_status": VoteStatus.ACCEPTED},
-                {"user_id": ids["Bob"], "amount_owed": 50.00, "paid_amount": 50.00, "is_paid": True, "vote_status": VoteStatus.ACCEPTED},
-                {"user_id": ids["Cara"], "amount_owed": 50.00, "paid_amount": 50.00, "is_paid": True, "vote_status": VoteStatus.ACCEPTED},
+                {
+                    "user_id": ids["Alice"],
+                    "amount_owed": 50.00,
+                    "paid_amount": 50.00,
+                    "is_paid": True,
+                    "vote_status": VoteStatus.ACCEPTED,
+                },
+                {
+                    "user_id": ids["Bob"],
+                    "amount_owed": 50.00,
+                    "paid_amount": 50.00,
+                    "is_paid": True,
+                    "vote_status": VoteStatus.ACCEPTED,
+                },
+                {
+                    "user_id": ids["Cara"],
+                    "amount_owed": 50.00,
+                    "paid_amount": 50.00,
+                    "is_paid": True,
+                    "vote_status": VoteStatus.ACCEPTED,
+                },
             ],
         )
 

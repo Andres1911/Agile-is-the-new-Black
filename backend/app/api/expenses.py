@@ -754,9 +754,7 @@ def edit_expense_amount(
         )
 
     # --- 5. Build new shares ---
-    existing_shares = (
-        db.query(ExpenseShare).filter(ExpenseShare.expense_id == expense_id).all()
-    )
+    existing_shares = db.query(ExpenseShare).filter(ExpenseShare.expense_id == expense_id).all()
 
     if body.split_evenly:
         # Determine participants: existing share holders
