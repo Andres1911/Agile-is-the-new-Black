@@ -92,7 +92,7 @@ class Household(HouseholdBase):
 
 class HouseholdWithMembers(Household):
     members: list[HouseholdMemberWithUser] = []
-    
+
 class LeaveHouseholdResponse(BaseModel):
     message: str
     household_id: int
