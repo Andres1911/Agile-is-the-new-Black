@@ -1,8 +1,17 @@
-import pytest
-from pytest_bdd import given, parsers, scenarios, then, when
-from app.models.models import Expense, ExpenseShare, ExpenseStatus, Household, HouseholdMember, User, VoteStatus
 from datetime import UTC, datetime
 
+import pytest
+from pytest_bdd import given, parsers, scenarios, then, when
+
+from app.models.models import (
+    Expense,
+    ExpenseShare,
+    ExpenseStatus,
+    Household,
+    HouseholdMember,
+    User,
+    VoteStatus,
+)
 
 # Link to the feature file
 scenarios("features/ID016_Resolve_Disputed_Expense.feature")
@@ -17,11 +26,13 @@ def context():
 # GIVEN STEPS (Setup)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @given(parsers.parse('"{username}" is logged in'))
 def user_logged_in_placeholder(username):
     # This step is satisfied because when_resolve_expense generates
     # the token dynamically using the username provided in the feature file.
     pass
+
 
 @given(parsers.parse('household "{household_name}" exists with members'), target_fixture="context")
 def given_household_with_roles(db, household_name, datatable, context):
@@ -31,41 +42,37 @@ def given_household_with_roles(db, household_name, datatable, context):
         db.add(house)
         db.flush()
 
-
     context["household_id"] = house.id
     context["household_name"] = household_name
-
 
     for row in datatable[1:]:  # | member | role |
         member_name, role = row
         user = db.query(User).filter(User.username == member_name).first()
         if not user:
             from app.core.security import get_password_hash
+
             user = User(
                 username=member_name,
                 email=f"{member_name.lower()}@test.com",
                 password_hash=get_password_hash("Password123!"),
-                full_name=member_name
+                full_name=member_name,
             )
             db.add(user)
             db.flush()
 
-
         # Update or create membership with specific role
-        membership = db.query(HouseholdMember).filter(
-            HouseholdMember.user_id == user.id,
-            HouseholdMember.household_id == house.id
-        ).first()
+        membership = (
+            db.query(HouseholdMember)
+            .filter(HouseholdMember.user_id == user.id, HouseholdMember.household_id == house.id)
+            .first()
+        )
 
-
-        is_admin = (role.upper() == "ADMIN")
-
+        is_admin = role.upper() == "ADMIN"
 
         if not membership:
             db.add(HouseholdMember(user_id=user.id, household_id=house.id, is_admin=is_admin))
         else:
             membership.is_admin = is_admin
-
 
     db.commit()
     return context
@@ -74,9 +81,8 @@ def given_household_with_roles(db, household_name, datatable, context):
 @given(parsers.parse('user "{username}" has an existing expense with the following details'))
 def given_existing_disputed_expense(db, username, datatable, context):
     user = db.query(User).filter(User.username == username).first()
-    rows = datatable[1:] # | description | amount | status |
+    rows = datatable[1:]  # | description | amount | status |
     desc, amt, status = rows[0]
-
 
     expense = Expense(
         description=desc,
@@ -84,7 +90,7 @@ def given_existing_disputed_expense(db, username, datatable, context):
         status=ExpenseStatus[status.upper()],
         household_id=context["household_id"],
         creator_id=user.id,
-        date=datetime.now(UTC)
+        date=datetime.now(UTC),
     )
     db.add(expense)
     db.flush()
@@ -92,12 +98,11 @@ def given_existing_disputed_expense(db, username, datatable, context):
     db.commit()
 
 
-@given(parsers.parse('the expense has the following expense shares'))
+@given(parsers.parse("the expense has the following expense shares"))
 def given_expense_shares(db, datatable, context):
-    for row in datatable[1:]: # | payer | amount_owed | vote_status |
+    for row in datatable[1:]:  # | payer | amount_owed | vote_status |
         payer_name, amount, vote_status = row
         payer = db.query(User).filter(User.username == payer_name).first()
-
 
         share = ExpenseShare(
             expense_id=context["current_expense_id"],
@@ -105,7 +110,7 @@ def given_expense_shares(db, datatable, context):
             amount_owed=float(amount),
             paid_amount=0.0,
             is_paid=False,
-            vote_status=VoteStatus[vote_status.upper()]
+            vote_status=VoteStatus[vote_status.upper()],
         )
         db.add(share)
     db.commit()
@@ -122,11 +127,11 @@ def given_specific_expense_status(db, username, description, status, context):
 
     expense = Expense(
         description=description,
-        amount=10.0, # Placeholder
+        amount=10.0,  # Placeholder
         status=ExpenseStatus[safe_status],
         household_id=context["household_id"],
         creator_id=user.id,
-        date=datetime.now(UTC)
+        date=datetime.now(UTC),
     )
     db.add(expense)
     db.flush()
@@ -140,23 +145,26 @@ def given_specific_expense_status(db, username, description, status, context):
 
 
 @when(parsers.parse('"{username}" marks the disputed expense "{description}" as "{decision}"'))
-@when(parsers.parse('"{username}" attempts to mark the disputed expense "{description}" as "{decision}"'))
+@when(
+    parsers.parse(
+        '"{username}" attempts to mark the disputed expense "{description}" as "{decision}"'
+    )
+)
 @when(parsers.parse('"{username}" attempts to mark the expense "{description}" as "{decision}"'))
 def when_resolve_expense(client, context, username, description, decision):
     # Retrieve the expense by description from context or DB
     expense_id = context["current_expense_id"]
 
-
     # Same authentication pattern as teammates
     from app.core.security import create_access_token
+
     token = create_access_token(data={"sub": username})
     headers = {"Authorization": f"Bearer {token}"}
-
 
     response = client.post(
         f"/api/v1/expenses/{expense_id}/resolve",
         json={"decision": decision.upper()},
-        headers=headers
+        headers=headers,
     )
     context["response"] = response
 
@@ -182,7 +190,11 @@ def then_check_expense_status(db, description, status):
 
 @then(parsers.parse('the vote status for all payers is forced to "{status}"'))
 def then_check_all_shares_status(db, context, status):
-    shares = db.query(ExpenseShare).filter(ExpenseShare.expense_id == context["current_expense_id"]).all()
+    shares = (
+        db.query(ExpenseShare)
+        .filter(ExpenseShare.expense_id == context["current_expense_id"])
+        .all()
+    )
     for share in shares:
         assert share.vote_status == VoteStatus[status.upper()]
 
@@ -206,7 +218,7 @@ def then_reject_action(context):
 
 @then(parsers.parse('the expense status remains "{status}"'))
 def then_status_unchanged(db, context, status):
-    db.expire_all() # Refresh from DB
+    db.expire_all()  # Refresh from DB
     expense = db.query(Expense).filter(Expense.id == context["current_expense_id"]).first()
 
     # Safely handle the feature file typo here as well

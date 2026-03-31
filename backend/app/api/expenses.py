@@ -24,8 +24,8 @@ from app.schemas.schemas import (
     RecurringExpenseCreateResponse,
     RecurringExpenseGenerateResponse,
     RequestedExpense,
-    RespondExpenseShareRequest,
     ResolveDisputeRequest,
+    RespondExpenseShareRequest,
 )
 from app.schemas.schemas import (
     RecurringExpense as RecurringExpenseSchema,
@@ -197,12 +197,13 @@ def create_recurring_expense(
         detail="Recurring expense created successfully",
     )
 
+
 @router.post("/{expense_id}/resolve", status_code=200)
 def resolve_disputed_expense(
-        expense_id: int,
-        body: ResolveDisputeRequest,
-        db: Session = Depends(get_db),
-        current_user: User = Depends(get_current_user),
+    expense_id: int,
+    body: ResolveDisputeRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     membership = (
         db.query(HouseholdMember)
@@ -243,6 +244,7 @@ def resolve_disputed_expense(
 
     db.commit()
     return {"detail": detail}
+
 
 @router.post("/recurring/generate", response_model=RecurringExpenseGenerateResponse)
 def generate_recurring_expenses(

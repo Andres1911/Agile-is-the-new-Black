@@ -1,6 +1,5 @@
 """Unit tests for resolving disputed expenses (ID016)."""
 
-
 from app.models.models import Expense, ExpenseShare, ExpenseStatus, User, VoteStatus
 from tests.conftest import auth_header, register
 
@@ -12,9 +11,9 @@ def _setup_household_and_disputed_expense(client, db):
     Forces the expense into a DISPUTED state with Bob and Cara's shares REJECTED.
     Returns (expense_id, headers_alice, headers_bob, headers_cara).
     """
-    from app.models.models import Household, HouseholdMember
-    from datetime import datetime, UTC
+    from datetime import UTC, datetime
 
+    from app.models.models import Household, HouseholdMember
 
     for name in ("Alice", "Bob", "Cara"):
         register(
@@ -25,11 +24,9 @@ def _setup_household_and_disputed_expense(client, db):
             full_name=name,
         )
 
-
     alice = db.query(User).filter(User.username == "Alice").first()
     bob = db.query(User).filter(User.username == "Bob").first()
     cara = db.query(User).filter(User.username == "Cara").first()
-
 
     # 1. Create Household and Members
     household = Household(name="MapleHouse", invite_code="MAPLE101", description="Test")
@@ -41,12 +38,10 @@ def _setup_household_and_disputed_expense(client, db):
     db.add(HouseholdMember(user_id=cara.id, household_id=household.id, is_admin=False))
     db.commit()
 
-
     # 2. Setup Headers for API calls
     headers_alice = auth_header(client, username="Alice", password="Password123!")
     headers_bob = auth_header(client, username="Bob", password="Password123!")
     headers_cara = auth_header(client, username="Cara", password="Password123!")
-
 
     # 3. Directly create a DISPUTED expense in the DB (bypassing API for faster setup)
     expense = Expense(
@@ -55,38 +50,40 @@ def _setup_household_and_disputed_expense(client, db):
         status=ExpenseStatus.DISPUTED,
         household_id=household.id,
         creator_id=alice.id,
-        date=datetime.now(UTC)
+        date=datetime.now(UTC),
     )
     db.add(expense)
     db.flush()
 
-
     # Add Rejected Shares
     share_bob = ExpenseShare(
-        expense_id=expense.id, user_id=bob.id, amount_owed=20.0,
-        paid_amount=0.0, is_paid=False, vote_status=VoteStatus.REJECTED
+        expense_id=expense.id,
+        user_id=bob.id,
+        amount_owed=20.0,
+        paid_amount=0.0,
+        is_paid=False,
+        vote_status=VoteStatus.REJECTED,
     )
     share_cara = ExpenseShare(
-        expense_id=expense.id, user_id=cara.id, amount_owed=20.0,
-        paid_amount=0.0, is_paid=False, vote_status=VoteStatus.REJECTED
+        expense_id=expense.id,
+        user_id=cara.id,
+        amount_owed=20.0,
+        paid_amount=0.0,
+        is_paid=False,
+        vote_status=VoteStatus.REJECTED,
     )
     db.add(share_bob)
     db.add(share_cara)
     db.commit()
 
-
     return expense.id, headers_alice, headers_bob, headers_cara
-
-
 
 
 class TestResolveDisputedExpenseSuccess:
     """Normal flows: Admin validates or invalidates."""
 
-
     def test_ID016_admin_validates_disputed_expense(self, client, db):
         expense_id, headers_alice, _, _ = _setup_household_and_disputed_expense(client, db)
-
 
         resp = client.post(
             f"/api/v1/expenses/{expense_id}/resolve",
@@ -96,20 +93,16 @@ class TestResolveDisputedExpenseSuccess:
         assert resp.status_code == 200, resp.text
         assert resp.json()["detail"] == "Expense validated by admin"
 
-
         # Verify DB State Changes
         db.expire_all()
         expense = db.query(Expense).filter(Expense.id == expense_id).first()
         assert expense.status == ExpenseStatus.PENDING
 
-
         shares = db.query(ExpenseShare).filter(ExpenseShare.expense_id == expense_id).all()
         assert all(s.vote_status == VoteStatus.ACCEPTED for s in shares)
 
-
     def test_ID016_admin_invalidates_disputed_expense(self, client, db):
         expense_id, headers_alice, _, _ = _setup_household_and_disputed_expense(client, db)
-
 
         resp = client.post(
             f"/api/v1/expenses/{expense_id}/resolve",
@@ -119,26 +112,20 @@ class TestResolveDisputedExpenseSuccess:
         assert resp.status_code == 200, resp.text
         assert resp.json()["detail"] == "Expense dismissed by admin"
 
-
         # Verify DB State Changes
         db.expire_all()
         expense = db.query(Expense).filter(Expense.id == expense_id).first()
         assert expense.status == ExpenseStatus.REJECTED
 
-
         shares = db.query(ExpenseShare).filter(ExpenseShare.expense_id == expense_id).all()
         assert all(s.vote_status == VoteStatus.REJECTED for s in shares)
-
-
 
 
 class TestResolveDisputedExpenseErrors:
     """Error flows: Non-admins, wrong status, wrong household."""
 
-
     def test_ID016_non_admin_cannot_resolve(self, client, db):
         expense_id, _, headers_bob, _ = _setup_household_and_disputed_expense(client, db)
-
 
         resp = client.post(
             f"/api/v1/expenses/{expense_id}/resolve",
@@ -148,22 +135,18 @@ class TestResolveDisputedExpenseErrors:
         assert resp.status_code == 403
         assert "Access denied: Only admins can resolve disputed expenses" in resp.json()["detail"]
 
-
         # Ensure state didn't change
         db.expire_all()
         expense = db.query(Expense).filter(Expense.id == expense_id).first()
         assert expense.status == ExpenseStatus.DISPUTED
 
-
     def test_ID016_admin_cannot_resolve_non_disputed_expense(self, client, db):
         expense_id, headers_alice, _, _ = _setup_household_and_disputed_expense(client, db)
-
 
         # Force status to PENDING
         expense = db.query(Expense).filter(Expense.id == expense_id).first()
         expense.status = ExpenseStatus.PENDING
         db.commit()
-
 
         resp = client.post(
             f"/api/v1/expenses/{expense_id}/resolve",
@@ -173,13 +156,11 @@ class TestResolveDisputedExpenseErrors:
         assert resp.status_code == 400
         assert "Cannot resolve: Expense is not in a disputed state" in resp.json()["detail"]
 
-
     def test_ID016_expense_not_found(self, client, db):
         _, headers_alice, _, _ = _setup_household_and_disputed_expense(client, db)
 
-
         resp = client.post(
-            f"/api/v1/expenses/999999/resolve",
+            "/api/v1/expenses/999999/resolve",
             json={"decision": "VALID"},
             headers=headers_alice,
         )
