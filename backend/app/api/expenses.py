@@ -572,9 +572,19 @@ def respond_expense_share(
         )
 
     if body.decision == "accept":
+        if share.vote_status == VoteStatus.REJECTED:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot accept a rejected expense",
+            )
         share.vote_status = VoteStatus.ACCEPTED
         response_message = "Expense share accepted"
     else:  # "decline"
+        if share.vote_status == VoteStatus.ACCEPTED:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot reject an already accepted expense",
+            )
         share.vote_status = VoteStatus.REJECTED
         response_message = "Expense share declined"
 
@@ -864,6 +874,9 @@ def verify_and_modify_expense(
 
 # In a services file or at the top of expenses.py
 def compute_expense_status(shares: list[ExpenseShare]) -> ExpenseStatus:
+    if not shares:
+        return ExpenseStatus.PENDING
+
     accepted_count = sum(1 for s in shares if s.vote_status == VoteStatus.ACCEPTED)
     total_count = len(shares)
     if accepted_count / total_count > 0.5:
