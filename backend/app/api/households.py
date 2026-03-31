@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from datetime import datetime, UTC
 
 from app.api.auth import get_current_user
 from app.core.invite_codes import generate_unique_invite_code
@@ -9,7 +10,7 @@ from app.models.models import Expense, ExpenseShare, Household, HouseholdMember,
 from app.models.models import User as UserModel
 from app.schemas.schemas import Expense as ExpenseSchema
 from app.schemas.schemas import Household as HouseholdSchema
-from app.schemas.schemas import HouseholdCreate, HouseholdMemberWithUser
+from app.schemas.schemas import HouseholdCreate, HouseholdMemberWithUser, LeaveHouseholdResponse
 
 
 class HouseholdJoin(BaseModel):
@@ -293,6 +294,114 @@ def join_household(
 
     return {"message": "Success"}
 
+
+@router.post("/me/leave", response_model=LeaveHouseholdResponse)
+def leave_household(
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user),
+):
+    """Leave the current user's active household.
+
+    Rules:
+    - User must be an active member of a household.
+    - User must have NO outstanding unpaid expense shares (PENDING or ACCEPTED).
+    - User must have NO expenses they created that still have unpaid shares owed by others.
+    - If sole admin but others remain, oldest member is auto-promoted to admin.
+    - If last member, household is soft-deleted (left_at set, data preserved).
+    """
+    # 1. Find active membership
+    membership = (
+        db.query(HouseholdMember)
+        .filter(
+            HouseholdMember.user_id == current_user.id,
+            HouseholdMember.left_at.is_(None),
+        )
+        .first()
+    )
+    if not membership:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You are not currently a member of any household.",
+        )
+
+    household_id = membership.household_id
+
+    # 2. Check: user still owes money to others
+    outstanding_owed = (
+        db.query(ExpenseShare)
+        .join(Expense, ExpenseShare.expense_id == Expense.id)
+        .filter(
+            Expense.household_id == household_id,
+            ExpenseShare.user_id == current_user.id,
+            ExpenseShare.is_paid.is_(False),
+            ExpenseShare.vote_status.in_([VoteStatus.PENDING, VoteStatus.ACCEPTED]),
+        )
+        .first()
+    )
+    if outstanding_owed:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "You have outstanding expense shares that must be settled before leaving. "
+                "Please pay or resolve all your debts first."
+            ),
+        )
+
+    # 3. Check: others still owe money to the user
+    outstanding_receivable = (
+        db.query(ExpenseShare)
+        .join(Expense, ExpenseShare.expense_id == Expense.id)
+        .filter(
+            Expense.household_id == household_id,
+            Expense.creator_id == current_user.id,
+            ExpenseShare.user_id != current_user.id,
+            ExpenseShare.is_paid.is_(False),
+            ExpenseShare.vote_status.in_([VoteStatus.PENDING, VoteStatus.ACCEPTED]),
+        )
+        .first()
+    )
+    if outstanding_receivable:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Other members still owe you money on expenses you created. "
+                "Please collect all payments or cancel those expenses before leaving."
+            ),
+        )
+
+    # 4. Soft-leave: set left_at timestamp
+    membership.left_at = datetime.now(UTC)
+
+    # 5. Check remaining active members
+    remaining_members = (
+        db.query(HouseholdMember)
+        .filter(
+            HouseholdMember.household_id == household_id,
+            HouseholdMember.left_at.is_(None),
+            HouseholdMember.user_id != current_user.id,
+        )
+        .all()
+    )
+
+    was_last_member = len(remaining_members) == 0
+
+    # 6. If sole admin and others remain, promote the longest-standing member
+    if not was_last_member and membership.is_admin:
+        other_admins = [m for m in remaining_members if m.is_admin]
+        if not other_admins:
+            new_admin = min(remaining_members, key=lambda m: m.joined_at)
+            new_admin.is_admin = True
+
+    db.commit()
+
+    return LeaveHouseholdResponse(
+        message=(
+            "You have successfully left the household."
+            + (" The household is now empty." if was_last_member else "")
+        ),
+        household_id=household_id,
+        was_last_member=was_last_member,
+    )
 
 @router.post("/{household_name}/debts/simplify")
 def simplify_household_debts(
