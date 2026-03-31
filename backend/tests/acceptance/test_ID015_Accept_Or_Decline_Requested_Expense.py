@@ -25,7 +25,10 @@ def get_table_dicts(datatable):
     return [dict(zip(keys, row, strict=False)) for row in datatable[1:]]
 
 
-@given(parsers.parse('household "{household_name}" exists with members'), target_fixture="context")
+@given(
+    parsers.parse('household "{household_name}" exists with members'),
+    target_fixture="context",
+)
 def given_household_exists_with_members(client, db, household_name, datatable, context):
     household = Household(name=household_name, invite_code=f"{household_name[:3].upper()}101")
     db.add(household)
@@ -58,7 +61,10 @@ def given_household_exists_with_members(client, db, household_name, datatable, c
     return context
 
 
-@given(parsers.parse('user "{creator}" has created the following expense'), target_fixture="context")
+@given(
+    parsers.parse('user "{creator}" has created the following expense'),
+    target_fixture="context",
+)
 def given_user_has_created_expense(db, creator, datatable, context):
     row = get_table_dicts(datatable)[0]
     expense = Expense(
@@ -108,7 +114,10 @@ def given_user_logged_in(client, username, context):
     return context
 
 
-@given(parsers.parse('"{username}" has "{decision}" share for "{description}"'), target_fixture="context")
+@given(
+    parsers.parse('"{username}" has "{decision}" share for "{description}"'),
+    target_fixture="context",
+)
 def given_user_already_voted(db, username, decision, description, context):
     expense = db.query(Expense).filter(Expense.description == description).first()
     share = (
@@ -133,7 +142,10 @@ def given_user_already_voted(db, username, decision, description, context):
     return context
 
 
-@when(parsers.parse('"{username}" "{decision}" the share for "{description}"'), target_fixture="context")
+@when(
+    parsers.parse('"{username}" "{decision}" the share for "{description}"'),
+    target_fixture="context",
+)
 def when_user_responds_to_share(client, db, username, decision, description, context):
     expense = db.query(Expense).filter(Expense.description == description).first()
     api_decision = "accept" if decision == "ACCEPTED" else "decline"
@@ -145,8 +157,13 @@ def when_user_responds_to_share(client, db, username, decision, description, con
     return context
 
 
-@when(parsers.parse('"{username}" attempts to "{decision}" the share for "{description}"'), target_fixture="context")
-def when_user_attempts_invalid_response(client, db, username, decision, description, context):
+@when(
+    parsers.parse('"{username}" attempts to "{decision}" the share for "{description}"'),
+    target_fixture="context",
+)
+def when_user_attempts_invalid_response(
+    client, db, username, decision, description, context
+):
     expense = db.query(Expense).filter(Expense.description == description).first()
     api_decision = "accept" if decision == "ACCEPTED" else "decline"
     context["response"] = client.post(
