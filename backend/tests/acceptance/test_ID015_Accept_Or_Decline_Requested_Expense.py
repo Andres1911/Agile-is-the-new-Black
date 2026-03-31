@@ -1,7 +1,16 @@
-import pytest
 from pytest_bdd import given, parsers, scenarios, then, when
 
-from app.models.models import Expense, ExpenseShare, ExpenseStatus, Household, HouseholdMember, User, VoteStatus
+import pytest
+
+from app.models.models import (
+    Expense,
+    ExpenseShare,
+    ExpenseStatus,
+    Household,
+    HouseholdMember,
+    User,
+    VoteStatus,
+)
 from tests.conftest import auth_header, register
 
 scenarios("features/ID015_Accept_Or_Decline_Requested_Expense.feature")
