@@ -161,9 +161,7 @@ def when_user_responds_to_share(client, db, username, decision, description, con
     parsers.parse('"{username}" attempts to "{decision}" the share for "{description}"'),
     target_fixture="context",
 )
-def when_user_attempts_invalid_response(
-    client, db, username, decision, description, context
-):
+def when_user_attempts_invalid_response(client, db, username, decision, description, context):
     expense = db.query(Expense).filter(Expense.description == description).first()
     api_decision = "accept" if decision == "ACCEPTED" else "decline"
     context["response"] = client.post(
