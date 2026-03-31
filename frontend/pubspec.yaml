@@ -33,6 +33,9 @@ dependencies:
   # MIME type detection
   mime: ^1.0.5
 
+  # HTTP content type parsing
+  http_parser: ^4.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

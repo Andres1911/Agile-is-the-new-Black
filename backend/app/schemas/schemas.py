@@ -244,6 +244,15 @@ class RecurringExpenseGenerateResponse(BaseModel):
     created_count: int
 
 
+class ExpenseEditAmount(BaseModel):
+    """Request body for editing an expense amount and resplitting shares."""
+
+    amount: float
+    split_evenly: bool = False
+    include_self: bool = False
+    manual_shares: list[ManualShare] | None = None
+
+
 class ConfirmPaymentRequest(BaseModel):
     """Request body for confirming payment of an expense share."""
 

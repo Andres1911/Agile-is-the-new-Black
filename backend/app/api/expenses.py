@@ -19,6 +19,7 @@ from app.models.models import (
 from app.schemas.schemas import (
     ConfirmPaymentRequest,
     ExpenseCreate,
+    ExpenseEditAmount,
     OutstandingExpense,
     RecurringExpenseCreate,
     RecurringExpenseCreateResponse,
@@ -657,6 +658,130 @@ async def scan_receipt(
         "items": result.get("items", []),
         "message": message,
     }
+
+
+@router.put("/{expense_id}/edit-amount", status_code=200)
+def edit_expense_amount(
+    expense_id: int,
+    body: ExpenseEditAmount,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Allow the expense creator to edit the amount and resplit shares (ID017)."""
+
+    # --- 1. Validate amount ---
+    if body.amount <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot update expense: Amount must be greater than zero",
+        )
+
+    # --- 2. Find the expense ---
+    expense = db.query(Expense).filter(Expense.id == expense_id).first()
+    if not expense:
+        raise HTTPException(status_code=404, detail="Expense not found")
+
+    # --- 3. Only the creator can edit ---
+    if expense.creator_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Cannot update expense: Only the expense creator can edit this expense",
+        )
+
+    # --- 4. Block edits on finalized or fully settled expenses ---
+    if expense.status == ExpenseStatus.FINALIZED:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot update expense: Finalized expenses cannot be modified",
+        )
+    if expense.status == ExpenseStatus.FULLY_SETTLED:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot update expense: Fully settled expenses cannot be modified",
+        )
+
+    # --- 5. Build new shares ---
+    existing_shares = (
+        db.query(ExpenseShare).filter(ExpenseShare.expense_id == expense_id).all()
+    )
+
+    if body.split_evenly:
+        # Determine participants: existing share holders
+        participant_ids = [s.user_id for s in existing_shares]
+        if body.include_self and current_user.id not in participant_ids:
+            participant_ids.insert(0, current_user.id)
+
+        num = len(participant_ids)
+        base_share = round(body.amount / num, 2)
+        sum_of_others = base_share * (num - 1)
+        last_share = round(body.amount - sum_of_others, 2)
+
+        # Delete old shares and create new ones
+        for s in existing_shares:
+            db.delete(s)
+        db.flush()
+
+        for i, user_id in enumerate(participant_ids):
+            amt = base_share if i < (num - 1) else last_share
+            is_creator = user_id == current_user.id
+            vote = VoteStatus.ACCEPTED if is_creator else VoteStatus.PENDING
+            db.add(
+                ExpenseShare(
+                    expense_id=expense_id,
+                    user_id=user_id,
+                    amount_owed=amt,
+                    paid_amount=0.0,
+                    is_paid=False,
+                    vote_status=vote,
+                )
+            )
+    else:
+        if not body.manual_shares:
+            raise HTTPException(
+                status_code=400,
+                detail="Manual shares list cannot be empty when split_evenly is False",
+            )
+
+        # Validate split totals
+        total_manual = sum(float(s.amount) for s in body.manual_shares)
+        if abs(round(total_manual, 2) - round(float(body.amount), 2)) > 0:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot update expense: Split amounts {total_manual:.2f} CAD do not equal expense total {body.amount:.2f} CAD",
+            )
+
+        # Delete old shares and create new ones
+        for s in existing_shares:
+            db.delete(s)
+        db.flush()
+
+        for s in body.manual_shares:
+            is_creator = s.user_id == current_user.id
+            vote = VoteStatus.ACCEPTED if is_creator else VoteStatus.PENDING
+            db.add(
+                ExpenseShare(
+                    expense_id=expense_id,
+                    user_id=s.user_id,
+                    amount_owed=float(s.amount),
+                    paid_amount=0.0,
+                    is_paid=False,
+                    vote_status=vote,
+                )
+            )
+
+    # --- 6. Update expense amount and reset status ---
+    expense.amount = body.amount
+    expense.status = ExpenseStatus.PENDING
+
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, detail="Database error during expense update"
+        ) from None
+
+    return {"detail": "Expense updated successfully"}
 
 
 def verify_and_modify_expense(
