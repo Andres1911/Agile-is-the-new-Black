@@ -27,6 +27,7 @@ class ExpenseStatus(enum.StrEnum):
     DISPUTED = "DISPUTED"
     PARTIALLY_SETTLED = "PARTIALLY_SETTLED"
     FULLY_SETTLED = "FULLY_SETTLED"
+    REJECTED = "REJECTED"
 
 
 class VoteStatus(enum.StrEnum):
