@@ -190,6 +190,15 @@ class ExpenseCreate(BaseModel):
     manual_shares: list[ManualShare] | None = None
 
 
+class ExpenseEditAmount(BaseModel):
+    """Request body for editing an expense amount and resplitting shares."""
+
+    amount: float
+    split_evenly: bool
+    include_self: bool = False
+    manual_shares: list[ManualShare] | None = None
+
+
 # ── Recurring expense schemas ─────────────────────────────────────────────
 
 
@@ -272,3 +281,9 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: str | None = None
+
+
+class ResolveDisputeRequest(BaseModel):
+    """Request body for an admin to resolve a disputed expense (ID016)."""
+
+    decision: Literal["VALID", "INVALID", "VALIDATE", "INVALIDATE"]

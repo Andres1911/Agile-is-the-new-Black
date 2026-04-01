@@ -342,10 +342,7 @@ def leave_household(
     if outstanding_owed:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "You have outstanding expense shares that must be settled before leaving. "
-                "Please pay or resolve all your debts first."
-            ),
+            detail="Cannot leave: Outstanding balance remains",
         )
 
     # 3. Check: others still owe money to the user
@@ -390,8 +387,12 @@ def leave_household(
     if not was_last_member and membership.is_admin:
         other_admins = [m for m in remaining_members if m.is_admin]
         if not other_admins:
-            new_admin = min(remaining_members, key=lambda m: m.joined_at)
-            new_admin.is_admin = True
+            membership.left_at = None
+            db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Error: Admin must transfer ownership before leaving",
+            )
 
     db.commit()
 
