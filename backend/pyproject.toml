@@ -69,3 +69,10 @@ indent-style = "space"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 asyncio_mode = "auto"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=8.4.2",
+    "pytest-bdd>=8.1.0",
+]
