@@ -13,7 +13,7 @@ from tests.conftest import auth_header as get_auth_header
 from tests.conftest import register as register_user
 
 # 1. Bind Feature file
-scenarios("features/ID029_Leave_Household.feature")
+scenarios("features/ID029_Leave_A_Household.feature")
 
 
 @pytest.fixture()
@@ -186,6 +186,39 @@ def given_household_has_other_members(db, household_name, context):
         db.commit()
 
 
+@given(parsers.parse('the user "{new_admin}" is a member of household "{household_name}"'))
+def given_user_member_of_household(db, new_admin, household_name, context):
+    """Ensure a specific user exists and is a member of the household"""
+    household = db.query(Household).filter(Household.name == household_name).first()
+
+    new_admin_user = db.query(User).filter(User.username == new_admin).first()
+    if not new_admin_user:
+        from app.core.security import get_password_hash
+
+        new_admin_user = User(
+            username=new_admin,
+            email=f"{new_admin.lower()}@test.com",
+            password_hash=get_password_hash("Password123!"),
+            full_name=new_admin,
+        )
+        db.add(new_admin_user)
+        db.flush()
+
+    membership = (
+        db.query(HouseholdMember)
+        .filter(
+            HouseholdMember.user_id == new_admin_user.id,
+            HouseholdMember.household_id == household.id,
+        )
+        .first()
+    )
+    if not membership:
+        db.add(
+            HouseholdMember(user_id=new_admin_user.id, household_id=household.id, is_admin=False)
+        )
+        db.commit()
+
+
 # ── WHEN steps ────────────────────────────────────────────────────────────
 
 
@@ -274,6 +307,66 @@ def then_user_still_admin_and_live_in(db, username, household_name):
             HouseholdMember.user_id == user.id,
             HouseholdMember.household_id == household.id,
             HouseholdMember.left_at.is_(None),
+        )
+        .first()
+    )
+    assert membership is not None
+    assert membership.is_admin is True
+
+
+# ── Alternative Flow: Admin transfers ownership ────────────────────────
+
+
+@when(
+    parsers.parse('the user "{username}" transfers the admin rights to "{new_admin}"'),
+    target_fixture="context",
+)
+def when_transfer_admin_rights(client, db, username, new_admin, context):
+    """Transfer admin rights from admin to another user"""
+    admin_user = db.query(User).filter(User.username == username).first()
+    new_admin_user = db.query(User).filter(User.username == new_admin).first()
+    household = db.query(Household).filter(Household.name == context["household_name"]).first()
+
+    # Update admin status
+    admin_membership = (
+        db.query(HouseholdMember)
+        .filter(
+            HouseholdMember.user_id == admin_user.id,
+            HouseholdMember.household_id == household.id,
+        )
+        .first()
+    )
+    if admin_membership:
+        admin_membership.is_admin = False
+
+    new_admin_membership = (
+        db.query(HouseholdMember)
+        .filter(
+            HouseholdMember.user_id == new_admin_user.id,
+            HouseholdMember.household_id == household.id,
+        )
+        .first()
+    )
+    if new_admin_membership:
+        new_admin_membership.is_admin = True
+
+    db.commit()
+    context["new_admin"] = new_admin
+    return context
+
+
+@then(parsers.parse('the user "{new_admin}" should have IsAdmin = true for "{household_name}"'))
+def then_new_admin_has_admin_rights(db, new_admin, household_name):
+    """Verify that the new admin has admin rights"""
+    new_admin_user = db.query(User).filter(User.username == new_admin).first()
+    household = db.query(Household).filter(Household.name == household_name).first()
+
+    db.expire_all()
+    membership = (
+        db.query(HouseholdMember)
+        .filter(
+            HouseholdMember.user_id == new_admin_user.id,
+            HouseholdMember.household_id == household.id,
         )
         .first()
     )

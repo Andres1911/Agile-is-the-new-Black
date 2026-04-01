@@ -16,7 +16,7 @@ Feature: View requested expenses
     And the user "Bob" is logged in
 
   Scenario: ID014 Household member views pending requested expenses    (Normal Flow)
-    When "Bob" requests his requested expenses using GET "/expenses/requested"
+    When "Bob" requests to view his requested expenses
     Then a list of 1 requested expenses should be returned
     And the first requested expense should be "Groceries" with amount 20.00
     And the requested expense should show creator "Alice"
@@ -24,13 +24,13 @@ Feature: View requested expenses
 
   Scenario: ID014 Household member with no pending requests sees an empty list    (Alternative Flow)
     Given all requested expense shares for "Bob" in "MapleHouse" are accepted
-    When "Bob" requests his requested expenses using GET "/expenses/requested"
+    When "Bob" requests to view his requested expenses
     Then an empty list of requested expenses should be returned
 
   Scenario: ID014 User not in any household attempts to view requested expenses    (Error Flow)
     Given a user with username "Charlie" exists in the system
-    And "Charlie" is logged in
     And "Charlie" is not a member of any household
-    When "Charlie" requests requested expenses using GET "/expenses/requested"
+    And "Charlie" is logged in
+    When "Charlie" requests to view his requested expenses
     Then the message "Cannot view requested expenses: You are not a member of any household" is issued
     And no requested expense data should be returned

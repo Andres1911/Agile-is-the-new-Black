@@ -36,7 +36,7 @@ def _mk_household(db, name: str = "MapleHouse") -> Household:
 
 
 class TestRecurringExpenseGeneration:
-    def test_ID018_monthly_end_date_inclusive_generates_expected_charges_and_shares(self, db):
+    def test_ID018_monthly_recurring_expense_generates_monthly_expenses_until_end_date(self, db):
         alice = _mk_user(db, "Alice")
         bob = _mk_user(db, "Bob")
         cara = _mk_user(db, "Cara")
@@ -114,7 +114,9 @@ class TestRecurringExpenseGeneration:
         assert recurring.occurrences_generated == 4
         assert recurring.is_active is False
 
-    def test_ID018_weekly_fixed_occurrences_generates_expected_charges(self, db):
+    def test_ID018_weekly_recurring_expense_generates_weekly_expenses_until_max_occurrences(
+        self, db
+    ):
         alice = _mk_user(db, "Alice")
         bob = _mk_user(db, "Bob")
         cara = _mk_user(db, "Cara")
@@ -184,7 +186,9 @@ class TestRecurringExpenseGeneration:
         assert recurring.occurrences_generated == 4
         assert recurring.is_active is False
 
-    def test_ID018_rejects_end_date_before_start_date(self):
+    def test_ID018_household_member_attempts_to_create_recurring_expense_with_end_date_before_start_date(
+        self,
+    ):
         start_at = datetime(2026, 6, 1, tzinfo=UTC)
         end_at = datetime(2026, 5, 1, tzinfo=UTC)
 

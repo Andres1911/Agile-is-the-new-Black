@@ -6,7 +6,7 @@ from tests.conftest import login, register
 
 
 class TestRecurringExpenseApiValidation:
-    def test_ID018_recurring_even_split_excluding_creator_requires_other_members(self, client):
+    def test_ID018_solo_household_member_cannot_create_recurring_expense(self, client):
         register(client, username="solo_admin", email="solo_admin@test.com")
         auth_resp = login(client, username="solo_admin")
         headers = {"Authorization": f"Bearer {auth_resp.json()['access_token']}"}

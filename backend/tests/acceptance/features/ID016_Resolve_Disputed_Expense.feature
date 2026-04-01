@@ -32,6 +32,21 @@ Feature: Resolve Disputed Expense
     Then the system updates the status of "Internet Bill" to "REJECTED"
     And the vote status for all payers is forced to "REJECTED"
     And the system displays success message "Expense dismissed by admin"
+  
+  Scenario: ID016 Admin validates a partially disputed expense    (Alternative Flow)
+    Given "Alice" is logged in
+    And user "Alice" has an existing expense with the following details
+      | description  | amount | status   |
+      | Power Bill   | 100.00 | DISPUTED |
+    And the expense has the following expense shares
+      | payer | amount_owed | vote_status |
+      | Bob   | 25.00       | REJECTED    |
+      | Cara  | 25.00       | REJECTED    |
+      | Paul  | 25.00       | ACCEPTED    |
+    When "Alice" marks the disputed expense "Power Bill" as "VALID"
+    Then the system updates the status of "Power Bill" to "PENDING"
+    And all vote statuses (including REJECTED) are forced to "ACCEPTED"
+    And the system displays success message "Expense validated by admin"
 
   Scenario: ID016 Non-admin attempts to resolve a disputed expense    (Error Flow)
     Given "Bob" is logged in

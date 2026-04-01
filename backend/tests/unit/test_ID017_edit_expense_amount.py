@@ -73,7 +73,7 @@ def _auth_headers(client, username="Alice"):
 
 
 class TestEditExpenseAmountSuccessCases:
-    def test_ID017_edit_amount_manual_resplit(self, client):
+    def test_ID017_household_member_edits_expense_amount_and_resplits_manually(self, client):
         """Normal flow: edit amount from 60 to 90 with manual resplit."""
         ids, h_id = _setup_household_with_members(client)
         headers = _auth_headers(client)
@@ -123,7 +123,9 @@ class TestEditExpenseAmountSuccessCases:
         assert cara_share.paid_amount == 0.0
         db.close()
 
-    def test_ID017_edit_amount_equal_resplit_with_self(self, client):
+    def test_ID017_household_member_edits_expense_amount_and_resplits_equally_including_self(
+        self, client
+    ):
         """Alternative flow: edit amount and resplit equally including self."""
         ids, h_id = _setup_household_with_members(client)
         headers = _auth_headers(client)
@@ -171,7 +173,7 @@ class TestEditExpenseAmountSuccessCases:
                 assert s.vote_status == VoteStatus.PENDING
         db.close()
 
-    def test_ID017_former_member_can_edit_their_expense(self, client):
+    def test_ID017_former_household_member_edits_expense_after_leaving_household(self, client):
         """Alternative flow: former member edits expense after leaving household."""
         ids, h_id = _setup_household_with_members(client)
         headers = _auth_headers(client)
@@ -233,7 +235,9 @@ class TestEditExpenseAmountSuccessCases:
 
 
 class TestEditExpenseAmountFailCases:
-    def test_ID017_split_amounts_do_not_equal_total(self, client):
+    def test_ID017_household_member_attempts_to_edit_expense_with_invalid_split_amount(
+        self, client
+    ):
         """Error flow: manual shares don't sum to new amount."""
         ids, h_id = _setup_household_with_members(client)
         headers = _auth_headers(client)
@@ -270,7 +274,7 @@ class TestEditExpenseAmountFailCases:
             in resp.json()["detail"].lower()
         )
 
-    def test_ID017_negative_amount(self, client):
+    def test_ID017_household_member_attempts_to_edit_expense_with_negative_amount(self, client):
         """Error flow: negative amount."""
         ids, h_id = _setup_household_with_members(client)
         headers = _auth_headers(client)
@@ -302,7 +306,7 @@ class TestEditExpenseAmountFailCases:
         assert resp.status_code == 400
         assert "amount must be greater than zero" in resp.json()["detail"].lower()
 
-    def test_ID017_cannot_edit_finalized_expense(self, client):
+    def test_ID017_household_member_attempts_to_edit_finalized_expense(self, client):
         """Error flow: editing a finalized expense."""
         ids, h_id = _setup_household_with_members(client)
         headers = _auth_headers(client)
@@ -353,7 +357,7 @@ class TestEditExpenseAmountFailCases:
         assert resp.status_code == 400
         assert "finalized expenses cannot be modified" in resp.json()["detail"].lower()
 
-    def test_ID017_cannot_edit_fully_settled_expense(self, client):
+    def test_ID017_expense_creator_attempts_to_edit_fully_settled_expense(self, client):
         """Error flow: editing a fully settled expense."""
         ids, h_id = _setup_household_with_members(client)
         headers = _auth_headers(client)
@@ -407,7 +411,7 @@ class TestEditExpenseAmountFailCases:
         assert resp.status_code == 400
         assert "fully settled expenses cannot be modified" in resp.json()["detail"].lower()
 
-    def test_ID017_non_creator_cannot_edit_expense(self, client):
+    def test_ID017_non_expense_creator_attempts_to_edit_expense(self, client):
         """Error flow: non-creator tries to edit expense."""
         ids, h_id = _setup_household_with_members(client)
         bob_headers = _auth_headers(client, username="Bob")

@@ -148,16 +148,11 @@ def given_not_member_any_household(db, username):
 
 
 @when(
-    parsers.parse('"{username}" requests his requested expenses using GET "{path}"'),
+    parsers.parse('"{username}" requests to view his requested expenses'),
     target_fixture="context",
 )
-@when(
-    parsers.parse('"{username}" requests requested expenses using GET "{path}"'),
-    target_fixture="context",
-)
-def when_get_requested_expenses(client, path, context):
-    if path.startswith("/expenses/"):
-        path = "/api/v1" + path
+def when_get_requested_expenses(client, username, context):
+    path = "/api/v1/expenses/requested"
 
     context["response"] = client.get(path, headers=context.get("headers", {}))
     return context

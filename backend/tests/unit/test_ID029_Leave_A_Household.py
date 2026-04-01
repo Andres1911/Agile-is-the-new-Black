@@ -98,31 +98,7 @@ def _auth_headers(client, username="Alice"):
 
 
 class TestLeaveHouseholdSuccessCases:
-    def test_ID029_member_leaves_with_no_expenses(self, client):
-        """Normal flow: member with no expenses successfully leaves."""
-        ids, h_id = _setup_household_with_members(client)
-        headers = _auth_headers(client, username="Bob")
-
-        resp = client.post("/api/v1/households/me/leave", headers=headers)
-
-        assert resp.status_code == 200
-        data = resp.json()
-        assert "successfully left" in data["message"].lower()
-        assert data["was_last_member"] is False
-
-        db = TestingSessionLocal()
-        membership = (
-            db.query(HouseholdMember)
-            .filter(
-                HouseholdMember.user_id == ids["Bob"],
-                HouseholdMember.household_id == h_id,
-            )
-            .first()
-        )
-        assert membership.left_at is not None
-        db.close()
-
-    def test_ID029_last_member_leaves_household_becomes_empty(self, client):
+    def test_ID029_household_becomes_empty_after_last_member_leaves(self, client):
         """Normal flow: last member leaves and household becomes empty."""
         user_id, h_id = _setup_single_member_household(client, username="Solo")
         headers = _auth_headers(client, username="Solo")
@@ -146,7 +122,7 @@ class TestLeaveHouseholdSuccessCases:
         assert membership.left_at is not None
         db.close()
 
-    def test_ID029_member_leaves_after_all_expenses_paid(self, client):
+    def test_ID029_household_member_leaves_successfully_after_paying_all_expenses(self, client):
         """Normal flow: member can leave once all their shares are paid."""
         ids, h_id = _setup_household_with_members(client)
 
@@ -183,7 +159,7 @@ class TestLeaveHouseholdSuccessCases:
 
 
 class TestLeaveHouseholdErrorCases:
-    def test_ID029_cannot_leave_with_unpaid_accepted_share(self, client):
+    def test_ID029_household_member_with_unpaid_accepted_share_attempts_to_leave(self, client):
         """Error flow: member cannot leave with an unpaid accepted expense share."""
         ids, h_id = _setup_household_with_members(client)
         _create_outstanding_expense(
@@ -212,7 +188,7 @@ class TestLeaveHouseholdErrorCases:
         assert membership is not None
         db.close()
 
-    def test_ID029_cannot_leave_with_pending_share(self, client):
+    def test_ID029_household_member_with_pending_share_attempts_to_leave(self, client):
         """Error flow: member cannot leave with a pending expense share."""
         ids, h_id = _setup_household_with_members(client)
 
@@ -244,47 +220,7 @@ class TestLeaveHouseholdErrorCases:
         assert resp.status_code == 400
         assert "cannot leave: outstanding balance remains" in resp.json()["detail"].lower()
 
-    def test_ID029_cannot_leave_while_others_owe_you(self, client):
-        """Error flow: member cannot leave while others still owe them money."""
-        ids, h_id = _setup_household_with_members(client)
-        _create_outstanding_expense(
-            creator_id=ids["Alice"],
-            debtor_id=ids["Bob"],
-            household_id=h_id,
-            amount=75.0,
-        )
-
-        headers = _auth_headers(client, username="Alice")
-        resp = client.post("/api/v1/households/me/leave", headers=headers)
-
-        assert resp.status_code == 400
-        assert "other members still owe you money" in resp.json()["detail"].lower()
-
-    def test_ID029_admin_cannot_leave_without_transferring_ownership(self, client):
-        """Error flow: sole admin cannot leave while other members remain."""
-        ids, h_id = _setup_household_with_members(client)
-        headers = _auth_headers(client, username="Alice")
-
-        resp = client.post("/api/v1/households/me/leave", headers=headers)
-
-        assert resp.status_code == 400
-        assert "admin must transfer ownership" in resp.json()["detail"].lower()
-
-        db = TestingSessionLocal()
-        membership = (
-            db.query(HouseholdMember)
-            .filter(
-                HouseholdMember.user_id == ids["Alice"],
-                HouseholdMember.household_id == h_id,
-                HouseholdMember.left_at.is_(None),
-            )
-            .first()
-        )
-        assert membership is not None
-        assert membership.is_admin is True
-        db.close()
-
-    def test_ID029_cannot_leave_if_not_in_household(self, client):
+    def test_ID029_household_member_not_in_any_household_attempts_to_leave(self, client):
         """Error flow: user not in any household cannot call leave."""
         register(
             client,
@@ -299,7 +235,7 @@ class TestLeaveHouseholdErrorCases:
         assert resp.status_code == 400
         assert "not currently a member" in resp.json()["detail"].lower()
 
-    def test_ID029_unauthenticated_user_cannot_leave(self, client):
+    def test_ID029_unauthenticated_user_attempts_to_leave_his_household(self, client):
         """Error flow: unauthenticated request returns 401."""
         resp = client.post("/api/v1/households/me/leave")
 

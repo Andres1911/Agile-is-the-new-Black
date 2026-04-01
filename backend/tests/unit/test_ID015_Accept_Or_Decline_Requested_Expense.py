@@ -55,7 +55,7 @@ def _setup_household_and_expense(client, db):
 
 
 class TestID015RespondExpenseShare:
-    def test_accept_pending_share(self, client, db):
+    def test_ID015_household_member_accepts_pending_share(self, client, db):
         expense_id, headers_bob, _ = _setup_household_and_expense(client, db)
 
         resp = client.post(
@@ -78,7 +78,7 @@ class TestID015RespondExpenseShare:
         )
         assert share.vote_status == VoteStatus.ACCEPTED
 
-    def test_decline_pending_share(self, client, db):
+    def test_ID015_household_member_declines_pending_share(self, client, db):
         expense_id, _, headers_cara = _setup_household_and_expense(client, db)
 
         resp = client.post(
@@ -101,7 +101,7 @@ class TestID015RespondExpenseShare:
         )
         assert share.vote_status == VoteStatus.REJECTED
 
-    def test_cannot_accept_rejected_share(self, client, db):
+    def test_ID015_household_member_attempts_to_accept_rejected_share(self, client, db):
         expense_id, _, headers_cara = _setup_household_and_expense(client, db)
 
         first_resp = client.post(
@@ -120,7 +120,7 @@ class TestID015RespondExpenseShare:
         assert second_resp.status_code == 400
         assert second_resp.json()["detail"] == "Cannot accept a rejected expense"
 
-    def test_cannot_decline_accepted_share(self, client, db):
+    def test_ID015_household_member_attempts_to_decline_accepted_share(self, client, db):
         expense_id, headers_bob, _ = _setup_household_and_expense(client, db)
 
         first_resp = client.post(

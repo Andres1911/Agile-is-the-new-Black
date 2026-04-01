@@ -124,7 +124,7 @@ class TestResolveDisputedExpenseSuccess:
 class TestResolveDisputedExpenseErrors:
     """Error flows: Non-admins, wrong status, wrong household."""
 
-    def test_ID016_non_admin_cannot_resolve(self, client, db):
+    def test_ID016_non_admin_attempts_to_resolve_disputed_expense(self, client, db):
         expense_id, _, headers_bob, _ = _setup_household_and_disputed_expense(client, db)
 
         resp = client.post(
@@ -140,7 +140,7 @@ class TestResolveDisputedExpenseErrors:
         expense = db.query(Expense).filter(Expense.id == expense_id).first()
         assert expense.status == ExpenseStatus.DISPUTED
 
-    def test_ID016_admin_cannot_resolve_non_disputed_expense(self, client, db):
+    def test_ID016_admin_attempts_to_resolve_non_disputed_expense(self, client, db):
         expense_id, headers_alice, _, _ = _setup_household_and_disputed_expense(client, db)
 
         # Force status to PENDING
@@ -156,7 +156,7 @@ class TestResolveDisputedExpenseErrors:
         assert resp.status_code == 400
         assert "Cannot resolve: Expense is not in a disputed state" in resp.json()["detail"]
 
-    def test_ID016_expense_not_found(self, client, db):
+    def test_ID016_admin_attempts_to_resolve_non_existent_expense(self, client, db):
         _, headers_alice, _, _ = _setup_household_and_disputed_expense(client, db)
 
         resp = client.post(
