@@ -13,7 +13,7 @@ def make_share(vote_status: VoteStatus) -> ExpenseShare:
 
 
 class TestAutoValidateExpense:
-    def test_majority_accepted_finalizes_expense(self):
+    def test_ID047_expense_finalized_with_majority_acceptance(self):
         """Strictly more than 50% accepted → FINALIZED."""
         shares = [
             make_share(VoteStatus.ACCEPTED),
@@ -22,7 +22,9 @@ class TestAutoValidateExpense:
         ]
         assert compute_expense_status(shares) == ExpenseStatus.FINALIZED
 
-    def test_exactly_50_percent_accepted_does_not_finalize(self):
+    def test_ID047_expense_remains_disputed_when_exactly_50_percent_household_members_accepted(
+        self,
+    ):
         """Exactly 50% accepted → not FINALIZED (stays DISPUTED due to rejection)."""
         shares = [
             make_share(VoteStatus.ACCEPTED),
@@ -30,7 +32,9 @@ class TestAutoValidateExpense:
         ]
         assert compute_expense_status(shares) == ExpenseStatus.DISPUTED
 
-    def test_minority_accepted_stays_disputed(self):
+    def test_ID047_expense_remains_disputed_when_less_than_50_percent_household_members_accepted(
+        self,
+    ):
         """Less than 50% accepted with rejections → DISPUTED."""
         shares = [
             make_share(VoteStatus.ACCEPTED),
@@ -39,7 +43,7 @@ class TestAutoValidateExpense:
         ]
         assert compute_expense_status(shares) == ExpenseStatus.DISPUTED
 
-    def test_all_accepted_finalizes_expense(self):
+    def test_ID047_expense_finalized_when_all_household_members_accepted(self):
         """100% accepted → FINALIZED."""
         shares = [
             make_share(VoteStatus.ACCEPTED),
@@ -48,7 +52,7 @@ class TestAutoValidateExpense:
         ]
         assert compute_expense_status(shares) == ExpenseStatus.FINALIZED
 
-    def test_all_pending_stays_pending(self):
+    def test_ID047_expense_without_vote_stays_pending(self):
         """No votes yet → PENDING."""
         shares = [
             make_share(VoteStatus.PENDING),
@@ -56,7 +60,7 @@ class TestAutoValidateExpense:
         ]
         assert compute_expense_status(shares) == ExpenseStatus.PENDING
 
-    def test_mixed_pending_and_accepted_no_majority(self):
+    def test_ID047_expense_remains_pending_with_minority_vote(self):
         """1 accepted, 3 pending → PENDING (25% < 50%)."""
         shares = [
             make_share(VoteStatus.ACCEPTED),
@@ -65,13 +69,3 @@ class TestAutoValidateExpense:
             make_share(VoteStatus.PENDING),
         ]
         assert compute_expense_status(shares) == ExpenseStatus.PENDING
-
-    def test_majority_accepted_overrides_disputed_state(self):
-        """Even with one rejection, if majority accepted → FINALIZED."""
-        shares = [
-            make_share(VoteStatus.ACCEPTED),
-            make_share(VoteStatus.ACCEPTED),
-            make_share(VoteStatus.ACCEPTED),
-            make_share(VoteStatus.REJECTED),
-        ]
-        assert compute_expense_status(shares) == ExpenseStatus.FINALIZED

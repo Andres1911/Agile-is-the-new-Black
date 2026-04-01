@@ -10,7 +10,7 @@ Feature: Leave a household
 
   # --- Normal Flow ---
 
-  Scenario Outline: ID029 User successfully leaves a household with no outstanding debt    (Normal Flow)
+  Scenario Outline: ID029 Household member with no outstanding debt successfully leaves a household    (Normal Flow)
     Given the user "<UserName>" is living in the household "<HouseholdName>" 
     And the user "<UserName>" has no outstanding balance in "<HouseholdName>"
     When the user requests to leave the household "<HouseholdName>"
@@ -22,9 +22,27 @@ Feature: Leave a household
       | Alice    | MapleHouse     |
       | Charlie  | The North Star |
 
+    # --- Alternative Flow ---
+
+  Scenario Outline: ID029 Admin successfully leaves after transferring ownership to another member    (Alternative Flow)
+    Given the user "<UserName>" is living in the household "<HouseholdName>" 
+    And the user "<UserName>" is an admin with IsAdmin = true 
+    And the household "<HouseholdName>" has other active members
+    And the user "<NewAdmin>" is a member of household "<HouseholdName>"
+    When the user "<UserName>" transfers the admin rights to "<NewAdmin>"
+    And the user requests to leave the household "<HouseholdName>"
+    Then the message "Success" is issued 
+    And the binding record linking User "<UserName>" to Household "<HouseholdName>" should have LiveIn = false 
+    And the user "<NewAdmin>" should have IsAdmin = true for "<HouseholdName>"
+
+    Examples:
+      | UserName | HouseholdName     | NewAdmin |
+      | Andres   | McGill Engineers  | Bob      |
+      | Samy     | The North Star    | Alice    |
+
   # --- Error Flows ---
 
-  Scenario Outline: ID029 User attempts to leave with an outstanding balance    (Error Flow)
+  Scenario Outline: ID029 Household member with an outstanding balance attempts to leave    (Error Flow)
     Given the user "<UserName>" is living in the household "<HouseholdName>" 
     And the user "<UserName>" has a debt of "<Amount>" to another member
     When the user requests to leave the household "<HouseholdName>"
@@ -48,3 +66,5 @@ Feature: Leave a household
       | UserName | HouseholdName     |
       | Andres   | McGill Engineers  |
       | Samy     | The North Star    |
+
+  

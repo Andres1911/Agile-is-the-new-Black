@@ -3,7 +3,7 @@ from app.schemas.schemas import ExpenseCreate
 
 
 class TestVerifyImageDataLogic:
-    def test_ID013_logic_modify_amount_to_zero(self):
+    def test_ID013_user_attempts_to_modify_image_extracted_data_to_zero(self):
         """
         Scenario: User attempts to modify image-extracted data with zero amount.
         Verification: Ensure the logic layer raises an error or returns a failure message

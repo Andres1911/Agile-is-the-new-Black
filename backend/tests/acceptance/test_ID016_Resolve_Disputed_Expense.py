@@ -189,6 +189,7 @@ def then_check_expense_status(db, description, status):
 
 
 @then(parsers.parse('the vote status for all payers is forced to "{status}"'))
+@then(parsers.parse('all vote statuses (including REJECTED) are forced to "{status}"'))
 def then_check_all_shares_status(db, context, status):
     shares = (
         db.query(ExpenseShare)

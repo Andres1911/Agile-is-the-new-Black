@@ -18,7 +18,7 @@ Feature: Accept or decline a requested expense
       | Bob         | 20.00    | 20.00          | PENDING     |
       | Cara        | 40.00    | 40.00          | PENDING     |
 
-  Scenario: ID015 Household member accepts a pending expense share
+  Scenario: ID015 Household member accepts a pending expense share    (Normal Flow)
     Given "Bob" is logged in
     When "Bob" "ACCEPTED" the share for "Grocery run"
     Then the status for the "Grocery run" expense should be "PENDING"
@@ -27,7 +27,7 @@ Feature: Accept or decline a requested expense
       | Bob         | 20.00    | 20.00          | ACCEPTED    |
       | Cara        | 40.00    | 40.00          | PENDING     |
 
-  Scenario: ID015 Household member rejects a pending expense share
+  Scenario: ID015 Household member rejects a pending expense share    (Normal Flow)
     Given "Cara" is logged in
     When "Cara" "REJECTED" the share for "Grocery run"
     Then the status for the "Grocery run" expense should be "DISPUTED"
@@ -36,7 +36,7 @@ Feature: Accept or decline a requested expense
       | Bob         | 20.00    | 20.00          | PENDING     |
       | Cara        | 40.00    | 40.00          | REJECTED    |
 
-  Scenario: ID015 All household members accept their pending expense shares
+  Scenario: ID015 All household members accept their pending expense shares    (Normal Flow)
     Given "Bob" has "ACCEPTED" share for "Grocery run"
     And "Cara" is logged in
     When "Cara" "ACCEPTED" the share for "Grocery run"
@@ -46,7 +46,7 @@ Feature: Accept or decline a requested expense
       | Bob         | 20.00    | 20.00          | ACCEPTED    |
       | Cara        | 40.00    | 40.00          | ACCEPTED    |
 
-  Scenario: ID015 Household member attempts to accept a previously rejected share
+  Scenario: ID015 Household member attempts to accept a previously rejected share    (Error Flow)
     Given "Cara" has "REJECTED" share for "Grocery run"
     And "Cara" is logged in
     When "Cara" attempts to "ACCEPTED" the share for "Grocery run"
@@ -57,7 +57,7 @@ Feature: Accept or decline a requested expense
       | Bob         | 20.00    | 20.00          | PENDING     |
       | Cara        | 40.00    | 40.00          | REJECTED    |
 
-  Scenario: ID015 Household member attempts to reject a previously accepted share
+  Scenario: ID015 Household member attempts to reject a previously accepted share    (Error Flow)
     Given "Bob" has "ACCEPTED" share for "Grocery run"
     And "Bob" is logged in
     When "Bob" attempts to "REJECTED" the share for "Grocery run"

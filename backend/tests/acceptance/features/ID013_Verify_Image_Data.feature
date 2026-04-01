@@ -13,7 +13,7 @@ Feature: Verify and modify image-extracted expense data
 
   # --- Normal Flow ---
 
-  Scenario: ID013 User verifies image-extracted data without modifications    (Normal Flow)
+  Scenario: ID013 User verifies image extracted data without modifications    (Normal Flow)
     Given the system has processed the image and extracted amount "45.00" from the receipt
     When "Alice" confirms the extracted data with the following details
       | description | category  |
@@ -24,7 +24,7 @@ Feature: Verify and modify image-extracted expense data
 
   # --- Alternative Flows ---
 
-  Scenario: ID013 User verifies image-extracted data with modifications    (Alternative Flow)
+  Scenario: ID013 User verifies image extracted data with modifications    (Alternative Flow)
     Given the system has processed the image and extracted amount "42.00" from the receipt
     When "Alice" modifies the extracted data with amount "45.00"
     And "Alice" confirms the extracted data with the following details
@@ -37,7 +37,7 @@ Feature: Verify and modify image-extracted expense data
 
   # --- Error Flows ---
 
-  Scenario Outline: ID013 User attempts to modify image-extracted data with negative amount    (Error Flow)
+  Scenario: ID013 User attempts to modify image extracted data with negative amount    (Error Flow)
     Given the system has processed the image and extracted amount "50.00" from the receipt
     When "Alice" modifies the extracted data with amount "-30.00"
     And "Alice" confirms the extracted data with the following details

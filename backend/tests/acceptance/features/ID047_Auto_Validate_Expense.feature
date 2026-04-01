@@ -20,19 +20,14 @@ Feature: Auto-validate expense by member majority
       | Cara  | 20.00       | PENDING     |
       | Paul  | 20.00       | PENDING     |
 
-  Scenario: ID021 Expense is auto-finalized when strictly more than 50% of members accept    (Normal Flow)
+  Scenario: ID047 Expense is auto-finalized when strictly more than 50% of members accept    (Normal Flow)
     Given "Bob" is logged in
     When "Cara" accepts the expense share for "Internet Bill"
     And "Paul" accepts the expense share for "Internet Bill"
     Then the system automatically updates the status of "Internet Bill" to "FINALIZED"
     And the system displays success message "Expense share accepted"
 
-  Scenario: ID021 Expense remains disputed when exactly 50% of members accept    (Alternate Flow)
-    Given "Bob" is logged in
-    When "Cara" accepts the expense share for "Internet Bill"
-    Then the status of "Internet Bill" remains "DISPUTED"
-
-  Scenario: ID021 Expense remains disputed when fewer than 50% of members accept    (Alternate Flow)
+  Scenario: ID047 Expense remains disputed when fewer than 50% of members accept    (Normal Flow)
     Given the expense has the following expense shares
       | payer | amount_owed | vote_status |
       | Bob   | 15.00       | REJECTED    |
@@ -41,8 +36,13 @@ Feature: Auto-validate expense by member majority
       | Dave  | 15.00       | PENDING     |
     When "Paul" accepts the expense share for "Internet Bill"
     Then the status of "Internet Bill" remains "DISPUTED"
+  
+   Scenario: ID047 Expense remains disputed when exactly 50% of members accept    (Alternate Flow)
+    Given "Bob" is logged in
+    When "Cara" accepts the expense share for "Internet Bill"
+    Then the status of "Internet Bill" remains "DISPUTED"
 
-  Scenario: ID021 Expense is auto-finalized when all members accept    (Alternate Flow)
+  Scenario: ID047 Expense is auto-finalized when all members accept    (Normal Flow)
     When "Cara" accepts the expense share for "Internet Bill"
     And "Paul" accepts the expense share for "Internet Bill"
     And "Bob" changes their vote to accepted for "Internet Bill"
