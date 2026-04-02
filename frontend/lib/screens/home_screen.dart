@@ -4,6 +4,7 @@ import '../models/expense.dart';
 import '../models/household.dart';
 import '../models/user.dart';
 import 'add_household_screen.dart';
+import 'join_household_screen.dart';
 import 'login_screen.dart';
 import 'pay_expense_screen.dart';
 import 'outstanding_expenses_screen.dart';
@@ -265,15 +266,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       floatingActionButton: _selectedIndex == 0 && _household != null
           ? FloatingActionButton(onPressed: () => _showAddExpenseOptions(context), child: const Icon(Icons.add))
-          : _selectedIndex == 1 && _household == null
-              ? FloatingActionButton(
-                  onPressed: () async {
-                    final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => const AddHouseholdScreen()));
-                    if (result == true) _loadData();
-                  },
-                  child: const Icon(Icons.add),
-                )
-              : null,
+          : null,
     );
   }
 
@@ -449,7 +442,58 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildHouseholdsTab() {
     if (_household == null) {
-      return const Center(child: Text('No households yet. Create your first household!'));
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Icon(Icons.groups_2_outlined, size: 56),
+              const SizedBox(height: 12),
+              const Text(
+                'No household yet',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Create a new household or join an existing one with an invite code.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey.shade700),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AddHouseholdScreen(),
+                    ),
+                  );
+                  if (result == true) _loadData();
+                },
+                icon: const Icon(Icons.add_home_outlined),
+                label: const Text('Create Household'),
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const JoinHouseholdScreen(),
+                    ),
+                  );
+                  if (result == true) _loadData();
+                },
+                icon: const Icon(Icons.vpn_key_outlined),
+                label: const Text('Join with Invite Code'),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     if (_householdMembers.isEmpty && !_loadingMembers) {

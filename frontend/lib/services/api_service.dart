@@ -359,6 +359,39 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> joinHousehold(
+    String householdName,
+    String inviteCode,
+  ) async {
+    await _loadToken();
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/households/join'),
+      headers: _getHeaders(),
+      body: jsonEncode({
+        'household_name': householdName,
+        'invite_code': inviteCode,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      try {
+        final error = jsonDecode(response.body);
+        if (error is Map<String, dynamic> &&
+            error['detail'] is String &&
+            (error['detail'] as String).isNotEmpty) {
+          throw Exception(error['detail']);
+        }
+      } on FormatException {
+        // Fallback to generic message below.
+      }
+
+      throw Exception('Failed to join household');
+    }
+  }
+
   Future<Map<String, dynamic>> getHousehold(int id) async {
     await _loadToken();
 
