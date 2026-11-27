@@ -1,252 +1,98 @@
-# Expense Tracker
+# Household Expense Tracker
 
-ECSE 428 - A household expense tracking application built with FastAPI (Python) backend and Flutter frontend.
+A team project for ECSE 428 that helps household members split shared expenses, review their shares, and track outstanding payments. Built with a FastAPI backend and a Flutter frontend.
 
-## Overview
+## Project highlights
 
-This expense tracker allows users to:
-- Register and authenticate (JWT)
-- Create and manage households (with invite codes)
-- Track shared expenses with splits & voting
-- Categorize expenses
-- View expense history
+- JWT registration and login.
+- Household creation, invite-code joining, member lists, and expense history.
+- Equal or manual expense splitting, share acceptance or rejection, dispute resolution, and payment confirmation.
+- Recurring-expense definitions and generation of due charges.
+- Receipt-image parsing with OCR.
+- Backend unit tests and Gherkin acceptance scenarios.
 
-> **Status:** The domain model (SQLAlchemy models + Pydantic schemas) is fully implemented.
-> Only the **Auth API** is wired up so far — Household, Expense and ExpenseShare endpoints will be added incrementally.
+These features are represented in the source; this is a course application, not a production financial service. Payment confirmation records a share as paid rather than processing a bank transaction.
 
-## Technology Stack
+## Architecture
 
-### Backend
-- **Python 3.12+** - Programming language
-- **FastAPI** - Modern web framework for building APIs
-- **SQLAlchemy 2.0** - SQL toolkit and ORM
-- **Pydantic v2** - Data validation
-- **SQLite** - Database (can be switched to PostgreSQL/MySQL)
-- **JWT** - Authentication
-- **uv** - Dependency management & virtualenv
-- **ruff** - Linting & formatting
+| Layer | Technologies | Entry points |
+| --- | --- | --- |
+| Interface | Flutter, Dart, Provider | [Screens](frontend/lib/screens), [API client](frontend/lib/services/api_service.dart) |
+| HTTP API | Python 3.12+, FastAPI, Pydantic | [Application](backend/main.py), [routes](backend/app/api) |
+| Persistence | SQLAlchemy, SQLite by default | [Models](backend/app/models/models.py), [database](backend/app/db/database.py) |
+| Services | Recurrence calculations, Pillow, pytesseract | [Services](backend/app/services) |
+| Verification | pytest, pytest-bdd, Ruff | [Tests](backend/tests), [CI](.github/workflows/ci.yml) |
 
-### Frontend
-- **Flutter** - Cross-platform mobile framework
-- **Dart** - Programming language
-- **Provider** - State management
-- **HTTP** - API client
+The backend registers authentication, user, household, and expense routers under `/api/v1`. SQLite tables and lightweight schema migrations are initialized at application startup.
 
-## Project Structure
+## Run the backend
 
-```
-.
-├── backend/
-│   ├── app/
-│   │   ├── api/          # API route handlers
-│   │   │   ├── auth.py
-│   │   │   ├── expenses.py
-│   │   │   └── households.py
-│   │   ├── core/         # Core functionality
-│   │   │   ├── config.py
-│   │   │   └── security.py
-│   │   ├── db/           # Database configuration
-│   │   │   └── database.py
-│   │   ├── models/       # SQLAlchemy models
-│   │   │   └── models.py
-│   │   └── schemas/      # Pydantic schemas
-│   │       └── schemas.py
-│   ├── main.py           # FastAPI application entry point
-│   ├── pyproject.toml    # Project config, deps & ruff settings
-│   ├── uv.lock           # Lockfile (pinned transitive deps)
-│   ├── requirements.txt  # Fallback pip requirements
-│   └── test_main.py      # Backend tests
-│
-└── frontend/
-    ├── lib/
-    │   ├── models/       # Data models
-    │   │   ├── expense.dart
-    │   │   ├── household.dart
-    │   │   └── user.dart
-    │   ├── screens/      # UI screens
-    │   │   ├── login_screen.dart
-    │   │   └── home_screen.dart
-    │   ├── services/     # API services
-    │   │   └── api_service.dart
-    │   └── main.dart     # Flutter app entry point
-    └── pubspec.yaml      # Flutter dependencies
-```
-
-## Setup Instructions
-
-### Prerequisites
-
-| Tool | Min version | Install |
-|------|-------------|--------|
-| **uv** | 0.10+ | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
-| **Python** | 3.12+ | `uv python install 3.14` (or use system Python) |
-| **Flutter** | latest | [flutter.dev/docs/get-started/install](https://flutter.dev/docs/get-started/install) |
-
-### Backend Setup
+Install Python 3.12+ and uv. From the repository root:
 
 ```bash
 cd backend
-
-# Create .venv + install all deps from the lockfile
 uv sync --all-extras
-
-# (optional) Configure secrets
 cp .env.example .env
-
-# Run the server
-uv run python main.py
 ```
 
-- API: http://localhost:8000
-- Interactive docs: http://localhost:8000/docs
-- Alternative docs: http://localhost:8000/redoc
+In PowerShell, use `Copy-Item .env.example .env`. Set a fresh local `SECRET_KEY` in `.env` before use; the checked-in default is a placeholder. Keep `.env` out of Git.
 
-### Frontend Setup
-
-1. **Navigate to frontend directory**
-   ```bash
-   cd frontend
-   ```
-
-2. **Install Flutter dependencies**
-   ```bash
-   flutter pub get
-   ```
-
-3. **Update API URL**
-   - Edit `lib/services/api_service.dart`
-   - Change `baseUrl` to your backend URL (default: `http://localhost:8000/api/v1`)
-
-4. **Run the app**
-   ```bash
-   flutter run
-   ```
-
-   For specific platform:
-   ```bash
-   flutter run -d chrome        # Web
-   flutter run -d android       # Android
-   flutter run -d ios           # iOS
-   ```
-
-## API Endpoints
-
-### Authentication (implemented)
-- `POST /api/v1/auth/register` - Register new user
-- `POST /api/v1/auth/login` - Login user (returns JWT)
-- `GET /api/v1/auth/me` - Get current user
-
-### Expenses (coming soon)
-_Endpoints will be added with splitting, voting & status logic._
-
-### Households (coming soon)
-_Endpoints will be added with invite-code join, admin roles, etc._
-
-## Running Tests
-
-### Backend Tests
 ```bash
-cd backend
-uv run pytest -v
+uv run uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-## Features
+Open [interactive API documentation](http://localhost:8000/docs) to inspect request schemas and try endpoints. The health endpoint is [localhost:8000/health](http://localhost:8000/health).
 
-### Implemented
-- User registration and JWT authentication
-- Domain model with full association-class pattern
-  - `User`, `Household`, `HouseholdMember` (admin flag, join/leave timestamps)
-  - `Expense` with `ExpenseStatus` (PENDING / FINALIZED / DISPUTED)
-  - `ExpenseShare` with `VoteStatus` (PENDING / ACCEPTED / REJECTED) + `is_paid`
-- Unique invite codes on Households
-- Pydantic v2 schemas for all models
+Receipt OCR also requires the Tesseract executable on your system path. HEIC/HEIF decoding additionally needs the optional `pillow-heif` package; it is not declared in the current project dependencies.
 
-### Coming Next
-- Household CRUD with invite-code join flow
-- Expense CRUD with automatic share splitting
-- Voting / agreement workflow on shares
-- Settlement tracking (mark shares as paid)
+## Run the frontend
 
-### Future Enhancements
-- Budget tracking and alerts
-- Expense analytics and reports
-- Export data to CSV/PDF
-- Recurring expenses
-- Receipt photo uploads
-- Push notifications
-- Search and filter expenses
+The repository contains Flutter source and `pubspec.yaml`, but no generated platform runner directories. With a compatible Flutter SDK installed, generate the runner for your intended platform locally:
 
-## Database Schema
+```bash
+cd frontend
+flutter create --platforms=android .
+flutter pub get
+```
 
-### Users
-| Column | Type | Notes |
-|---|---|---|
-| id | Integer | PK |
-| username | String | Unique |
-| email | String | Unique |
-| password_hash | String | bcrypt |
-| full_name | String | |
-| is_active | Boolean | default True |
-| created_at | DateTime | UTC |
+Review the generated files before committing them. Configure `baseUrl` in [the API client](frontend/lib/services/api_service.dart) for the device you are using. Its default is `http://localhost:8000/api/v1`; a physical device needs a reachable backend address.
 
-### Households
-| Column | Type | Notes |
-|---|---|---|
-| id | Integer | PK |
-| name | String | |
-| description | String | |
-| invite_code | String | Unique |
-| address | String | |
-| created_at | DateTime | UTC |
+```bash
+flutter devices
+flutter run -d <device-id>
+```
 
-### HouseholdMembers (Association Class)
-| Column | Type | Notes |
-|---|---|---|
-| user_id | Integer | PK, FK → Users |
-| household_id | Integer | PK, FK → Households |
-| is_admin | Boolean | default False |
-| joined_at | DateTime | UTC |
-| left_at | DateTime | nullable |
+Platform setup and frontend/backend integration still require validation. The client imports `dart:io`, so browser support should not be assumed.
 
-### Expenses
-| Column | Type | Notes |
-|---|---|---|
-| id | Integer | PK |
-| amount | Float | |
-| description | String | |
-| category | String | |
-| date | DateTime | UTC |
-| status | ExpenseStatus | PENDING / FINALIZED / DISPUTED |
-| creator_id | Integer | FK → Users |
-| household_id | Integer | FK → Households |
+## Explore the implementation
 
-### ExpenseShares
-| Column | Type | Notes |
-|---|---|---|
-| id | Integer | PK |
-| expense_id | Integer | FK → Expenses |
-| user_id | Integer | FK → Users |
-| amount_owed | Float | |
-| paid_amount | Float | |
-| is_paid | Boolean | Settlement flag |
-| vote_status | VoteStatus | PENDING / ACCEPTED / REJECTED |
+| Workflow | Code |
+| --- | --- |
+| Authentication | [auth.py](backend/app/api/auth.py) |
+| Household membership and debt simplification | [households.py](backend/app/api/households.py) |
+| Splitting, voting, payment confirmation, and receipt scanning | [expenses.py](backend/app/api/expenses.py) |
+| Recurrence scheduling and charge generation | [recurring_expenses.py](backend/app/services/recurring_expenses.py) |
+| Receipt text and amount extraction | [receipt_parser.py](backend/app/services/receipt_parser.py) |
 
-## Development
+Use the generated API documentation as the endpoint reference. Some frontend helper methods target routes that differ from the backend, including the leave-household flow; inspect both sides when extending a feature.
 
-### Backend Development
-- **Docs:** FastAPI auto-generates OpenAPI docs at `/docs`
-- **Hot reload:** `uv run uvicorn main:app --reload`
-- **Lint:** `uv run ruff check .`
-- **Format:** `uv run ruff format .`
-- **Add a dependency:** `uv add <package>` (runtime) or `uv add --optional dev <package>` (dev)
-- **Re-lock:** `uv lock` after editing `pyproject.toml` manually
-- All config (deps, ruff, pytest) lives in `backend/pyproject.toml`
+## Tests and quality checks
 
-### Frontend Development
-- Use `flutter run` with hot reload enabled
-- Follow Dart style guidelines
-- Test on multiple devices/emulators
+From `backend/`:
 
-## License
+```bash
+uv run pytest -v
+uv run ruff check .
+uv run ruff format --check .
+```
 
-This project is created for ECSE 428 course.
+Acceptance scenarios are in [tests/acceptance/features](backend/tests/acceptance/features); unit tests are in [tests/unit](backend/tests/unit). GitHub Actions configures linting, formatting, and tests on pushes and pull requests to `main`. The workflow runs tests only after preceding checks succeed; the presence of CI is not a claim that the latest run passes.
+
+## Scope and credits
+
+This is a collaborative ECSE 428 project. Repository ownership does not imply sole authorship; the [commit history](https://github.com/Andres1911/Agile-is-the-new-Black/commits/main/) records contributions.
+
+Use synthetic household and receipt data for demonstrations. No deployment hardening or cross-platform verification is claimed. Recurring charges are generated through application/API logic; no background scheduler is configured in the inspected application entry point.
+
+The repository does not currently include a standalone license. Course context does not itself grant redistribution rights.
+
